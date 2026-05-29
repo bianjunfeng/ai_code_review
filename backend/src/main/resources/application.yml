@@ -1,0 +1,16 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ai-pr-review-backend
+
+github:
+  token: ${GITHUB_TOKEN:}
+
+ai:
+  base-url: ${AI_BASE_URL:https://api.deepseek.com}
+  api-key: ${AI_API_KEY:}
+  model-name: ${AI_MODEL_NAME:deepseek-chat}
+  temperature: ${AI_TEMPERATURE:0.2}
+  max-tokens: 3000
