@@ -856,30 +856,35 @@ Review 结果反馈闭环
 
 ------
 
-## 18. 适用场景
+## 18. 许可证
 
-本项目适用于：
+```
+MIT License
 
-```text
-课程设计
-软件工程实践
-AI 应用开发比赛
-团队协作开发
-个人简历项目
-代码评审辅助工具
+Copyright (c) 2026 码就对了
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ------
 
-## 19. 许可证
-
-本项目仅用于学习和比赛展示。
-
-------
-
-## 20. 联系方式
-
-项目维护者可在此处填写：
+## 19. 联系方式
 
 ```text
 作者：边峻峰、陈浩楠
