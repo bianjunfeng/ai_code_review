@@ -4,7 +4,11 @@ server:
 spring:
   application:
     name: ai-pr-review-backend
-
+  datasource:
+    url: ${DB_URL:jdbc:mysql://49.232.59.230:3306/ai_code_review?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:ai_review_user}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
 github:
   token: ${GITHUB_TOKEN:}
 
