@@ -114,7 +114,7 @@ ai-pr-review/
 后端包结构应遵循：
 
 ```text
-backend/src/main/java/com/example/aipr
+backend/src/main/java/com/aipr/review
 ├── common
 ├── config
 ├── controller

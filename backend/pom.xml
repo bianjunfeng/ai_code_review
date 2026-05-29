@@ -8,7 +8,7 @@
 		<version>3.5.14</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.example</groupId>
+	<groupId>com.aipr.review</groupId>
 	<artifactId>ai-pr-review-backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>ai-pr-review-backend</name>

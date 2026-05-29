@@ -271,7 +271,7 @@ LLM Client
 
 ```text
 backend
-├── src/main/java/com/example/aipr
+├── src/main/java/com/aipr/review
 │   ├── common
 │   ├── config
 │   ├── controller
@@ -390,15 +390,25 @@ POST /api/github/preview
     "owner": "example",
     "repo": "demo",
     "pullNumber": 12,
-    "title": "待接入 GitHub API 的 PR 预览",
-    "author": "unknown",
-    "sourceBranch": "head",
-    "targetBranch": "base",
-    "state": "OPEN",
-    "additions": 0,
-    "deletions": 0,
-    "changedFiles": 0,
-    "files": []
+    "title": "feat: add login api",
+    "body": "Add login endpoint and related tests.",
+    "author": "octocat",
+    "sourceBranch": "feature/login",
+    "targetBranch": "main",
+    "state": "open",
+    "additions": 20,
+    "deletions": 5,
+    "changedFiles": 1,
+    "files": [
+      {
+        "filename": "src/main/java/UserService.java",
+        "status": "modified",
+        "additions": 20,
+        "deletions": 5,
+        "changes": 25,
+        "patch": "@@ -1,1 +1,2 @@"
+      }
+    ]
   }
 }
 ```
@@ -427,17 +437,63 @@ POST /api/review-tasks
   "message": "success",
   "data": {
     "taskId": 10001,
-    "status": "PENDING"
+    "status": "REVIEWING"
   }
 }
 ```
 
 ------
 
-### 8.4 查询 Review 报告
+### 8.4 查询 Review 任务详情
+
+```http
+GET /api/review-tasks/{taskId}
+```
+
+返回任务状态、PR 标题、作者、分支、变更文件数、增删行数和错误信息。
+
+------
+
+### 8.5 查询 Review 文件列表
+
+```http
+GET /api/review-tasks/{taskId}/files
+```
+
+返回该任务保存的 changed files、语言识别结果、patch、是否跳过 AI Review 及跳过原因。
+
+------
+
+### 8.6 查询 Review 建议
+
+```http
+GET /api/review-tasks/{taskId}/comments
+```
+
+AI Review 接入前返回空数组；后续用于返回模型生成的文件级 Review 建议。
+
+------
+
+### 8.7 查询 Review 报告
 
 ```http
 GET /api/review-tasks/{taskId}/report
+```
+
+报告由任务信息、文件列表和 Review 建议聚合生成，字段包含：
+
+```text
+taskId
+status
+prInfo
+summary
+riskScore
+riskLevel
+mainChanges
+riskItems
+files
+testSuggestions
+finalReview
 ```
 
 ------
@@ -463,6 +519,7 @@ GET /api/review-tasks/{taskId}/report
 需要准备：
 
 ```text
+GitHub API Base URL
 GitHub Token
 大模型 API Key
 大模型 Base URL
@@ -472,6 +529,7 @@ GitHub Token
 示例：
 
 ```text
+GITHUB_API_BASE_URL=https://api.github.com
 GITHUB_TOKEN=ghp_xxx
 AI_BASE_URL=https://api.deepseek.com/v1
 AI_API_KEY=sk-xxx
@@ -512,7 +570,8 @@ spring:
     password: your_password
 
 github:
-  token: ${GITHUB_TOKEN}
+  api-base-url: ${GITHUB_API_BASE_URL:https://api.github.com}
+  token: ${GITHUB_TOKEN:}
 
 ai:
   base-url: ${AI_BASE_URL}
@@ -879,6 +938,24 @@ Review 结果反馈闭环
 → 调用 AI 模型
 → 生成 Review 报告
 → 前端展示
+```
+
+当前后端已完成：
+
+```text
+PR URL 解析
+GitHub PR 基本信息获取
+changed files / patch 获取
+Review 任务创建
+Review 文件保存
+任务详情 / 文件列表 / 评论列表 / 报告聚合接口
+```
+
+当前存储说明：
+
+```text
+MVP 阶段先使用内存任务存储，让任务闭环和接口结构稳定。
+后续接入 MySQL 时，将 ReviewTaskStore 替换为 MyBatis-Plus Mapper 实现即可。
 ```
 
 ------

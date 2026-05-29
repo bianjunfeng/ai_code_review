@@ -197,7 +197,7 @@ LLM Client
 ## 5.1 项目目录结构
 
 ```text
-com.example.aipr
+com.aipr.review
 ├── common
 │   ├── Result.java
 │   ├── BusinessException.java
@@ -278,6 +278,28 @@ com.example.aipr
     ├── SeverityEnum.java
     └── FileStatusEnum.java
 ```
+
+## 5.2 当前 MVP 存储边界
+
+短周期实现先以 `ReviewTaskStore` 抽象任务存储，默认实现为内存存储：
+
+```text
+ReviewTaskStore
+└── InMemoryReviewTaskStore
+```
+
+这样可以先稳定核心任务链路：
+
+```text
+创建任务
+→ 保存 PR 信息
+→ 保存 changed files / patch
+→ 查询任务详情
+→ 查询文件列表
+→ 聚合报告
+```
+
+后续接入 MySQL 时，不需要改变 Controller、VO 和主要业务流程，只需要将 `ReviewTaskStore` 的实现替换为 MyBatis-Plus Mapper 版本，并与 `review_task`、`review_file`、`review_comment` 表对齐。
 
 ------
 
