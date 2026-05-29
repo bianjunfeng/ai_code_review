@@ -345,7 +345,67 @@ MVP 阶段主要包括以下表：
 
 ## 8. 核心接口
 
-### 8.1 创建 Review 任务
+### 8.1 健康检查
+
+```http
+GET /api/health
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "status": "UP",
+    "service": "ai-pr-review-backend"
+  }
+}
+```
+
+------
+
+### 8.2 GitHub PR 预览
+
+```http
+POST /api/github/preview
+```
+
+请求示例：
+
+```json
+{
+  "prUrl": "https://github.com/example/demo/pull/12"
+}
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "owner": "example",
+    "repo": "demo",
+    "pullNumber": 12,
+    "title": "待接入 GitHub API 的 PR 预览",
+    "author": "unknown",
+    "sourceBranch": "head",
+    "targetBranch": "base",
+    "state": "OPEN",
+    "additions": 0,
+    "deletions": 0,
+    "changedFiles": 0,
+    "files": []
+  }
+}
+```
+
+------
+
+### 8.3 创建 Review 任务
 
 ```http
 POST /api/review-tasks
@@ -374,43 +434,10 @@ POST /api/review-tasks
 
 ------
 
-### 8.2 查询任务详情
+### 8.4 查询 Review 报告
 
 ```http
-GET /api/review-tasks/{taskId}
-```
-
-------
-
-### 8.3 查询文件级 Review
-
-```http
-GET /api/review-tasks/{taskId}/files
-```
-
-------
-
-### 8.4 查询 Review 建议
-
-```http
-GET /api/review-tasks/{taskId}/comments
-```
-
-------
-
-### 8.5 重新 Review
-
-```http
-POST /api/review-tasks/{taskId}/rerun
-```
-
-------
-
-### 8.6 模型配置
-
-```http
-POST /api/model-configs
-POST /api/model-configs/{id}/test
+GET /api/review-tasks/{taskId}/report
 ```
 
 ------
