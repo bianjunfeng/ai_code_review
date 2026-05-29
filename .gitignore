@@ -1,8 +1,95 @@
-# Compiled class file
+# =========================================================
+# AI PR Review Assistant - .gitignore
+# 目标：
+# 1. 避免提交密钥、Token、环境变量等敏感信息
+# 2. 避免提交构建产物、依赖目录、日志文件
+# 3. 避免提交本地 IDE、系统缓存文件
+# =========================================================
+
+
+# =========================================================
+# 1. 敏感配置与密钥文件
+# =========================================================
+
+.env
+.env.*
+!.env.example
+
+*.env
+*.secret
+*.secrets
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+
+# API Key / Token / 凭证类文件
+*token*
+*Token*
+*secret*
+*Secret*
+*apikey*
+*api-key*
+*ApiKey*
+*credential*
+*Credential*
+*credentials*
+*Credentials*
+
+# 常见云厂商 / 第三方服务凭证
+*.json.key
+service-account*.json
+google-credentials*.json
+firebase*.json
+aliyun*.json
+tencent*.json
+aws-credentials
+.aws/
+.azure/
+.gcp/
+
+
+# =========================================================
+# 2. Spring Boot / Java 本地配置
+# =========================================================
+
+# 本地配置文件
+application-local.yml
+application-local.yaml
+application-local.properties
+
+application-dev-local.yml
+application-dev-local.yaml
+application-dev-local.properties
+
+application-prod-local.yml
+application-prod-local.yaml
+application-prod-local.properties
+
+bootstrap-local.yml
+bootstrap-local.yaml
+bootstrap-local.properties
+
+# 注意：示例配置文件允许提交
+!application-example.yml
+!application-example.yaml
+!application-example.properties
+
+# Maven / Java 构建产物
+target/
 *.class
 
 # Log file
 *.log
+
+# Local secrets
+.env
+*.env
+application-local.yml
 
 # BlueJ files
 *.ctxt
@@ -13,12 +100,199 @@
 # Package Files #
 *.jar
 *.war
-*.nar
 *.ear
-*.zip
-*.tar.gz
-*.rar
+
+# Frontend / backend build output
+target/
+node_modules/
+dist/
+selfprompt/
+# IDE
+.idea/
+.vscode/
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+# Maven Wrapper 保留
+!.mvn/wrapper/maven-wrapper.jar
+
+# Gradle，如后续使用
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+
+# =========================================================
+# 3. 前端依赖与构建产物
+# =========================================================
+
+node_modules/
+dist/
+build/
+.vite/
+.cache/
+.output/
+
+# npm / pnpm / yarn 日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 前端本地环境配置
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+
+# =========================================================
+# 4. 日志与运行时文件
+# =========================================================
+
+logs/
+*.log
+*.log.*
+log/
+runtime/
+tmp/
+temp/
+
+# Spring Boot 默认日志或临时文件
+*.pid
+*.seed
+*.pid.lock
+
+
+# =========================================================
+# 5. 数据库本地文件
+# =========================================================
+
+# H2 数据库文件
+*.mv.db
+*.trace.db
+*.h2.db
+
+# SQLite，如果后续使用
+*.sqlite
+*.sqlite3
+*.db
+
+# MySQL dump，避免误提交真实数据
+*.sql
+*.dump
+
+# 如果确实需要提交初始化 SQL，请放到指定目录并单独放行
+!backend/src/main/resources/db/migration/*.sql
+!backend/src/main/resources/schema.sql
+!backend/src/main/resources/data.sql
+
+
+# =========================================================
+# 6. IDE / 编辑器配置
+# =========================================================
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.example.json
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+.nb-gradle/
+
+
+# =========================================================
+# 7. 操作系统文件
+# =========================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+
+# =========================================================
+# 8. 测试覆盖率与报告
+# =========================================================
+
+coverage/
+.nyc_output/
+jacoco.exec
+target/site/jacoco/
+surefire-reports/
+failsafe-reports/
+
+
+# =========================================================
+# 9. Docker / 部署本地配置
+# =========================================================
+
+docker-compose.override.yml
+docker-compose.local.yml
+
+# 本地部署脚本中的敏感变量
+deploy/.env
+deploy/.env.*
+deploy/*secret*
+deploy/*token*
+deploy/*credential*
+
+
+# =========================================================
+# 10. AI / 模型调用相关敏感文件
+# =========================================================
+
+# 避免提交模型 API Key、本地 Prompt 调试记录、真实调用日志
+ai-keys.*
+llm-keys.*
+openai-key.*
+deepseek-key.*
+dashscope-key.*
+qwen-key.*
+
+prompt-debug/
+llm-debug/
+ai-debug/
+chat-history/
+review-output-local/
+
+
+# =========================================================
+# 11. 项目生成文件
+# =========================================================
+
+# 后端临时分析结果
+review-result-local.json
+review-report-local.json
+github-pr-cache.json
+
+# 本地缓存
+.cache/
+.cache-loader/
+
+# Vite cache
+.vite/
+frontend/.vite/

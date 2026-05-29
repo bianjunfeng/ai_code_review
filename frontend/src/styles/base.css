@@ -1,0 +1,73 @@
+:root {
+  color: #172033;
+  background: #f4f7fb;
+  font-family:
+    Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  font-size: 16px;
+  font-synthesis: none;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    linear-gradient(180deg, #eef5ff 0%, #f7f9fc 360px, #f4f7fb 100%);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.mono {
+  font-family:
+    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Monaco, "Courier New", monospace;
+}
+
+.section-card {
+  border: 1px solid #e5eaf3;
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(24, 48, 88, 0.06);
+}
+
+.section-title {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 16px;
+  color: #172033;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.section-title__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: #1f63d8;
+  background: #e8f1ff;
+  border-radius: 8px;
+}
+
+.muted {
+  color: #66748a;
+}
