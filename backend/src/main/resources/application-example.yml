@@ -7,6 +7,9 @@ spring:
 
 github:
   token: ${GITHUB_TOKEN:}
+  api-base-url: ${GITHUB_API_BASE_URL:https://api.github.com}
+  connect-timeout-seconds: ${GITHUB_CONNECT_TIMEOUT_SECONDS:10}
+  read-timeout-seconds: ${GITHUB_READ_TIMEOUT_SECONDS:30}
 
 ai:
   base-url: ${AI_BASE_URL:https://api.deepseek.com}
