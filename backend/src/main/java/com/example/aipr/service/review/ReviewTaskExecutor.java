@@ -42,23 +42,38 @@ public class ReviewTaskExecutor {
         try {
             ReviewTask task = reviewTaskMapper.selectById(taskId);
             if (task == null) {
-                log.warn("Review task not found, taskId={}", taskId);
+                log.warn("[Executor] taskId={}, 任务不存在", taskId);
                 return;
             }
 
+            log.info("[Executor] taskId={}, 开始 AI Review, repo={}/{} PR#{}", taskId, task.getOwnerName(), task.getRepoName(), task.getPrNumber());
             updateStatus(taskId, ReviewTaskStatus.REVIEWING, null);
+
             List<ReviewFile> files = reviewFileMapper.findActiveByTaskId(taskId);
+            log.info("[Executor] taskId={}, 待分析文件数={}", taskId, files.size());
+
             List<FileReviewResult> aiResults = new ArrayList<>();
+            int successCount = 0;
+            int failCount = 0;
+
             for (ReviewFile file : files) {
-                FileReviewResult result = aiReviewService.reviewFile(buildContext(task, file));
-                saveFileReviewResult(taskId, file, result);
-                aiResults.add(result);
+                try {
+                    FileReviewResult result = aiReviewService.reviewFile(buildContext(task, file));
+                    saveFileReviewResult(taskId, file, result);
+                    aiResults.add(result);
+                    successCount++;
+                    log.debug("[Executor] taskId={}, 文件分析完成, file={}, commentCount={}", taskId, file.getFilePath(), result.getComments() != null ? result.getComments().size() : 0);
+                } catch (Exception e) {
+                    failCount++;
+                    log.warn("[Executor] taskId={}, 文件分析失败, file={}, error={}", taskId, file.getFilePath(), e.getMessage());
+                }
             }
 
+            log.info("[Executor] taskId={}, AI Review 完成, success={}, fail={}", taskId, successCount, failCount);
             updateStatus(taskId, ReviewTaskStatus.SUMMARIZING, null);
             finishTask(taskId, aiResults);
         } catch (Exception e) {
-            log.warn("Review task failed, taskId={}, message={}", taskId, e.getMessage());
+            log.error("[Executor] taskId={}, 任务执行异常: {}", taskId, e.getMessage(), e);
             updateStatus(taskId, ReviewTaskStatus.FAILED, e.getMessage());
         }
     }
@@ -118,7 +133,15 @@ public class ReviewTaskExecutor {
     private void finishTask(Long taskId, List<FileReviewResult> aiResults) {
         List<ReviewFile> files = reviewFileMapper.findByTaskId(taskId);
         List<ReviewComment> comments = reviewCommentMapper.findByTaskId(taskId);
+
+        log.info("[Executor] taskId={}, 汇总完成, 文件数={}, 评论数={}", taskId, files.size(), comments.size());
+
         RiskScoreCalculator.RiskScoreResult riskSummary = riskScoreCalculator.calculate(comments);
+        log.info("[Executor] taskId={}, 风险评分计算完成, riskScore={}, riskLevel={}, critical={}, high={}, medium={}, low={}, info={}",
+                taskId, riskSummary.riskScore(), riskSummary.riskLevel(),
+                riskSummary.criticalCount(), riskSummary.highCount(),
+                riskSummary.mediumCount(), riskSummary.lowCount(), riskSummary.infoCount());
+
         String summary = buildSummary(files);
         String finalReview = buildFinalReview(riskSummary);
 
@@ -131,6 +154,8 @@ public class ReviewTaskExecutor {
         update.setErrorMessage(null);
         update.setUpdatedAt(LocalDateTime.now());
         reviewTaskMapper.updateById(update);
+
+        log.info("[Executor] taskId={}, 任务完成, status=SUCCESS, riskScore={}, riskLevel={}", taskId, riskSummary.riskScore(), riskSummary.riskLevel());
     }
 
     private String buildSummary(List<ReviewFile> files) {

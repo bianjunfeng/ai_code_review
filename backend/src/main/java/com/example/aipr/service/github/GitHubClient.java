@@ -46,7 +46,10 @@ public class GitHubClient {
                 .addPathSegment(String.valueOf(parsedPrUrl.pullNumber()))
                 .build();
 
+        log.debug("[GitHub] 获取 PR 信息, repo={}/{} PR#{}", parsedPrUrl.owner(), parsedPrUrl.repo(), parsedPrUrl.pullNumber());
         JsonNode root = executeForJson(url, "GitHub PR detail");
+        log.debug("[GitHub] PR 信息获取成功, repo={}/{} PR#{} title={}", parsedPrUrl.owner(), parsedPrUrl.repo(), parsedPrUrl.pullNumber(), root.path("title").asText(""));
+
         return GitHubPrInfo.builder()
                 .owner(parsedPrUrl.owner())
                 .repo(parsedPrUrl.repo())
@@ -67,6 +70,8 @@ public class GitHubClient {
         List<GitHubChangedFile> files = new ArrayList<>();
         int page = 1;
 
+        log.debug("[GitHub] 获取 PR 文件列表, repo={}/{} PR#{}", parsedPrUrl.owner(), parsedPrUrl.repo(), parsedPrUrl.pullNumber());
+
         while (true) {
             HttpUrl url = buildBaseUrl()
                     .addPathSegment("repos")
@@ -85,15 +90,23 @@ public class GitHubClient {
             }
 
             for (JsonNode fileNode : root) {
+                String filename = fileNode.path("filename").asText("");
+                int additions = fileNode.path("additions").asInt(0);
+                int deletions = fileNode.path("deletions").asInt(0);
+                String patch = fileNode.path("patch").asText("");
+
                 files.add(GitHubChangedFile.builder()
-                        .filename(fileNode.path("filename").asText(""))
+                        .filename(filename)
                         .status(fileNode.path("status").asText(""))
-                        .additions(fileNode.path("additions").asInt(0))
-                        .deletions(fileNode.path("deletions").asInt(0))
+                        .additions(additions)
+                        .deletions(deletions)
                         .changes(fileNode.path("changes").asInt(0))
-                        .patch(fileNode.path("patch").asText(""))
+                        .patch(patch)
                         .build());
             }
+
+            int fileCount = files.size();
+            log.debug("[GitHub] 第 {} 页获取完成, 当前累计文件数={}", page, fileCount);
 
             if (root.size() < PAGE_SIZE) {
                 break;
@@ -101,6 +114,7 @@ public class GitHubClient {
             page += 1;
         }
 
+        log.info("[GitHub] PR 文件列表获取完成, repo={}/{} PR#{} 文件总数={}", parsedPrUrl.owner(), parsedPrUrl.repo(), parsedPrUrl.pullNumber(), files.size());
         return files;
     }
 

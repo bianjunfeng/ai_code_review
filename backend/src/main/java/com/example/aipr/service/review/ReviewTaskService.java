@@ -21,6 +21,7 @@ import com.example.aipr.vo.ReviewFileVO;
 import com.example.aipr.vo.ReviewTaskCreatedVO;
 import com.example.aipr.vo.ReviewTaskDetailVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -28,6 +29,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReviewTaskService {
@@ -44,22 +46,28 @@ public class ReviewTaskService {
     private final ReviewTaskExecutor reviewTaskExecutor;
 
     public ReviewTaskCreatedVO createTask(String prUrl) {
+        log.info("[Task] 创建 Review 任务, prUrl={}", prUrl);
         ParsedPrUrl parsedPrUrl = prUrlParser.parse(prUrl);
         ReviewTask task = createPendingTask(prUrl, parsedPrUrl);
 
         try {
+            log.info("[Task] taskId={}, 解析 PR 信息, repo={}/{} PR#{}", task.getId(), parsedPrUrl.owner(), parsedPrUrl.repo(), parsedPrUrl.pullNumber());
             updateStatus(task.getId(), ReviewTaskStatus.FETCHING_PR, null);
 
             GitHubPrInfo prInfo = gitHubClient.getPullRequest(parsedPrUrl);
             fillPullRequestInfo(task, prInfo);
             reviewTaskMapper.updateById(task);
+            log.info("[Task] taskId={}, PR 信息获取成功, title={}, author={}, source={} -> {}", task.getId(), prInfo.getTitle(), prInfo.getAuthor(), prInfo.getSourceBranch(), prInfo.getTargetBranch());
 
             updateStatus(task.getId(), ReviewTaskStatus.PARSING_DIFF, null);
+            log.info("[Task] taskId={}, 开始获取 Diff 文件", task.getId());
 
             List<GitHubChangedFile> changedFiles = gitHubClient.getPullRequestFiles(parsedPrUrl);
             saveChangedFiles(task.getId(), changedFiles);
+            log.info("[Task] taskId={}, Diff 文件保存完成, fileCount={}", task.getId(), changedFiles.size());
 
             updateStatus(task.getId(), ReviewTaskStatus.PENDING, null);
+            log.info("[Task] taskId={}, 任务已提交异步执行", task.getId());
             reviewTaskExecutor.executeAsync(task.getId());
 
             return ReviewTaskCreatedVO.builder()
@@ -67,6 +75,7 @@ public class ReviewTaskService {
                     .status(ReviewTaskStatus.PENDING.name())
                     .build();
         } catch (RuntimeException e) {
+            log.error("[Task] taskId={}, 任务创建失败: {}", task.getId(), e.getMessage());
             updateStatus(task.getId(), ReviewTaskStatus.FAILED, e.getMessage());
             throw e;
         }
