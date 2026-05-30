@@ -122,8 +122,10 @@ public class AiReviewOutputParser {
             builder.riskType(RiskType.MAINTAINABILITY.name());
         }
 
-        if (commentNode.has("severity") && !commentNode.get("severity").isNull()) {
-            String severity = commentNode.get("severity").asText();
+        if (hasTextField(commentNode, "riskLevel") || hasTextField(commentNode, "severity")) {
+            String severity = hasTextField(commentNode, "riskLevel")
+                    ? commentNode.get("riskLevel").asText()
+                    : commentNode.get("severity").asText();
             try {
                 builder.severity(Severity.valueOf(severity).name());
             } catch (IllegalArgumentException e) {
@@ -173,6 +175,10 @@ public class AiReviewOutputParser {
         builder.needHumanCheck(needHumanCheck);
 
         return builder.build();
+    }
+
+    private boolean hasTextField(JsonNode node, String fieldName) {
+        return node.has(fieldName) && !node.get(fieldName).isNull();
     }
 
     private String truncateForLog(String content) {

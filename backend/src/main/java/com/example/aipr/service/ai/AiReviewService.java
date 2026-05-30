@@ -80,7 +80,9 @@ public class AiReviewService {
                 : rawOutput;
         log.debug("LLM output for {}, length={}: {}", context.getFilePath(), rawOutput.length(), outputSummary);
 
-        return outputParser.parseFileReview(rawOutput);
+        FileReviewResult result = outputParser.parseFileReview(rawOutput);
+        result.setRawOutput(rawOutput);
+        return result;
     }
 
     private boolean shouldSkip(String filePath) {
