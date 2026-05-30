@@ -2,6 +2,7 @@ package com.example.aipr.service.review;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.aipr.common.BusinessException;
+import com.example.aipr.config.AiProperties;
 import com.example.aipr.entity.ReviewComment;
 import com.example.aipr.entity.ReviewFile;
 import com.example.aipr.entity.ReviewTask;
@@ -21,6 +22,7 @@ import com.example.aipr.vo.ReviewFileVO;
 import com.example.aipr.vo.ReviewTaskCreatedVO;
 import com.example.aipr.vo.ReviewTaskDetailVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -28,6 +30,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReviewTaskService {
@@ -42,34 +45,62 @@ public class ReviewTaskService {
     private final ReviewFileMapper reviewFileMapper;
     private final ReviewCommentMapper reviewCommentMapper;
     private final ReviewTaskExecutor reviewTaskExecutor;
+    private final AiProperties aiProperties;
 
-    public ReviewTaskCreatedVO createTask(String prUrl) {
+    public ReviewTaskCreatedVO createTask(String prUrl, Boolean forceRefresh) {
+        log.info("[Task] 创建 Review 任务, prUrl={}, forceRefresh={}", prUrl, forceRefresh);
         ParsedPrUrl parsedPrUrl = prUrlParser.parse(prUrl);
-        ReviewTask task = createPendingTask(prUrl, parsedPrUrl);
 
         try {
-            updateStatus(task.getId(), ReviewTaskStatus.FETCHING_PR, null);
-
+            log.info("[Task] 解析 PR 信息, repo={}/{} PR#{}", parsedPrUrl.owner(), parsedPrUrl.repo(), parsedPrUrl.pullNumber());
             GitHubPrInfo prInfo = gitHubClient.getPullRequest(parsedPrUrl);
-            fillPullRequestInfo(task, prInfo);
-            reviewTaskMapper.updateById(task);
+            log.info("[Task] PR 信息获取成功, title={}, author={}, source={} -> {}", prInfo.getTitle(), prInfo.getAuthor(), prInfo.getSourceBranch(), prInfo.getTargetBranch());
 
-            updateStatus(task.getId(), ReviewTaskStatus.PARSING_DIFF, null);
+            // 检查缓存
+            if (!Boolean.TRUE.equals(forceRefresh)) {
+                ReviewTask cachedTask = findCachedTask(parsedPrUrl, prInfo);
+                if (cachedTask != null) {
+                    log.info("[Task] 缓存命中, cachedTaskId={}, riskScore={}, riskLevel={}", cachedTask.getId(), cachedTask.getRiskScore(), cachedTask.getRiskLevel());
+                    return ReviewTaskCreatedVO.builder()
+                            .taskId(cachedTask.getId())
+                            .status(cachedTask.getStatus())
+                            .cached(true)
+                            .cachedFromTaskId(cachedTask.getCachedFromTaskId())
+                            .build();
+                }
+            }
 
+            ReviewTask task = createPendingTask(prUrl, parsedPrUrl, prInfo);
+
+            log.info("[Task] taskId={}, 开始获取 Diff 文件", task.getId());
             List<GitHubChangedFile> changedFiles = gitHubClient.getPullRequestFiles(parsedPrUrl);
             saveChangedFiles(task.getId(), changedFiles);
+            log.info("[Task] taskId={}, Diff 文件保存完成, fileCount={}", task.getId(), changedFiles.size());
 
             updateStatus(task.getId(), ReviewTaskStatus.PENDING, null);
+            log.info("[Task] taskId={}, 任务已提交异步执行", task.getId());
             reviewTaskExecutor.executeAsync(task.getId());
 
             return ReviewTaskCreatedVO.builder()
                     .taskId(task.getId())
                     .status(ReviewTaskStatus.PENDING.name())
+                    .cached(false)
                     .build();
         } catch (RuntimeException e) {
-            updateStatus(task.getId(), ReviewTaskStatus.FAILED, e.getMessage());
+            log.error("[Task] 任务创建失败: {}", e.getMessage());
             throw e;
         }
+    }
+
+    private ReviewTask findCachedTask(ParsedPrUrl parsedPrUrl, GitHubPrInfo prInfo) {
+        return reviewTaskMapper.findLatestSuccessTaskForCache(
+                parsedPrUrl.owner(),
+                parsedPrUrl.repo(),
+                parsedPrUrl.pullNumber(),
+                prInfo.getHeadSha(),
+                aiProperties.getModelName(),
+                aiProperties.getPromptVersion()
+        );
     }
 
     public ReviewTaskDetailVO getTask(Long taskId) {
@@ -117,12 +148,20 @@ public class ReviewTaskService {
         return task;
     }
 
-    private ReviewTask createPendingTask(String prUrl, ParsedPrUrl parsedPrUrl) {
+    private ReviewTask createPendingTask(String prUrl, ParsedPrUrl parsedPrUrl, GitHubPrInfo prInfo) {
         ReviewTask task = new ReviewTask();
         task.setPrUrl(prUrl);
         task.setOwnerName(parsedPrUrl.owner());
         task.setRepoName(parsedPrUrl.repo());
         task.setPrNumber(parsedPrUrl.pullNumber());
+        task.setPrTitle(prInfo.getTitle());
+        task.setPrAuthor(prInfo.getAuthor());
+        task.setSourceBranch(prInfo.getSourceBranch());
+        task.setTargetBranch(prInfo.getTargetBranch());
+        task.setHeadSha(prInfo.getHeadSha());
+        task.setBaseSha(prInfo.getBaseSha());
+        task.setModelName(aiProperties.getModelName());
+        task.setPromptVersion(aiProperties.getPromptVersion());
         task.setStatus(ReviewTaskStatus.PENDING.name());
         task.setCreatedAt(LocalDateTime.now());
         task.setUpdatedAt(LocalDateTime.now());
@@ -130,14 +169,6 @@ public class ReviewTaskService {
         reviewTaskMapper.insert(task);
 
         return task;
-    }
-
-    private void fillPullRequestInfo(ReviewTask task, GitHubPrInfo prInfo) {
-        task.setPrTitle(prInfo.getTitle());
-        task.setPrAuthor(prInfo.getAuthor());
-        task.setSourceBranch(prInfo.getSourceBranch());
-        task.setTargetBranch(prInfo.getTargetBranch());
-        task.setUpdatedAt(LocalDateTime.now());
     }
 
     private void saveChangedFiles(Long taskId, List<GitHubChangedFile> changedFiles) {

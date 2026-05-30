@@ -39,27 +39,31 @@ public class AiReviewService {
     );
 
     public FileReviewResult reviewFile(AiReviewContext context) {
-        if (shouldSkip(context.getFilePath())) {
-            log.info("Skipping file for AI review: {}", context.getFilePath());
+        String filePath = context.getFilePath();
+
+        if (shouldSkip(filePath)) {
+            log.info("[AI] 跳过文件, path={}", filePath);
             return FileReviewResult.builder()
-                    .filePath(context.getFilePath())
+                    .filePath(filePath)
                     .summary("该文件类型暂不进行 AI Review")
                     .comments(Collections.emptyList())
                     .build();
         }
 
         if (context.getPatch() == null || context.getPatch().trim().isEmpty()) {
-            log.info("Skipping file with empty patch: {}", context.getFilePath());
+            log.info("[AI] 跳过空 patch 文件, path={}", filePath);
             return FileReviewResult.builder()
-                    .filePath(context.getFilePath())
+                    .filePath(filePath)
                     .summary("该文件无内容变更")
                     .comments(Collections.emptyList())
                     .build();
         }
 
         if (context.getLanguage() == null || context.getLanguage().isEmpty()) {
-            context.setLanguage(promptRenderer.detectLanguage(context.getFilePath()));
+            context.setLanguage(promptRenderer.detectLanguage(filePath));
         }
+
+        log.info("[AI] 开始分析文件, path={}, language={}, patchLength={}", filePath, context.getLanguage(), context.getPatch().length());
 
         String prompt = promptRenderer.renderFileReviewPrompt(context);
 
@@ -75,13 +79,14 @@ public class AiReviewService {
         LlmResponse llmResponse = llmClient.chat(llmRequest);
 
         String rawOutput = llmResponse.getContent();
-        String outputSummary = rawOutput.length() > MAX_LOG_LENGTH
-                ? rawOutput.substring(0, MAX_LOG_LENGTH) + "..."
-                : rawOutput;
-        log.debug("LLM output for {}, length={}: {}", context.getFilePath(), rawOutput.length(), outputSummary);
+        log.info("[AI] 文件分析完成, path={}, responseLength={}", filePath, rawOutput.length());
 
         FileReviewResult result = outputParser.parseFileReview(rawOutput);
         result.setRawOutput(rawOutput);
+
+        int commentCount = result.getComments() != null ? result.getComments().size() : 0;
+        log.info("[AI] 文件分析结果, path={}, summary={}, commentCount={}", filePath, result.getSummary(), commentCount);
+
         return result;
     }
 

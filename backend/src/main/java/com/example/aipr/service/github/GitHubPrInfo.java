@@ -19,4 +19,6 @@ public class GitHubPrInfo {
     private Integer additions;
     private Integer deletions;
     private Integer changedFiles;
+    private String headSha;
+    private String baseSha;
 }

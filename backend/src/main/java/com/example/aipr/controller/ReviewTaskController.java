@@ -31,7 +31,7 @@ public class ReviewTaskController {
 
     @PostMapping
     public Result<ReviewTaskCreatedVO> create(@Valid @RequestBody CreateReviewTaskRequest request) {
-        return Result.ok(reviewTaskService.createTask(request.getPrUrl()));
+        return Result.ok(reviewTaskService.createTask(request.getPrUrl(), request.getForceRefresh()));
     }
 
     @GetMapping("/{taskId}")

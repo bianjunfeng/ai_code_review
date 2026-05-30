@@ -1,11 +1,13 @@
 package com.example.aipr.service.review;
 
 import com.example.aipr.entity.ReviewComment;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Locale;
 
+@Slf4j
 @Component
 public class RiskScoreCalculator {
 
@@ -15,6 +17,7 @@ public class RiskScoreCalculator {
 
     public RiskScoreResult calculate(List<ReviewComment> comments) {
         if (comments == null || comments.isEmpty()) {
+            log.info("[RiskScore] 无评论, riskScore=0, riskLevel=LOW");
             return new RiskScoreResult(0, "LOW", 0L, 0L, 0L, 0L, 0L, 0, 0);
         }
 
@@ -32,7 +35,7 @@ public class RiskScoreCalculator {
 
         int riskScore = Math.min(MAX_RISK_SCORE, baseScore + riskTypeBonus + humanCheckBonus);
 
-        return new RiskScoreResult(
+        RiskScoreResult result = new RiskScoreResult(
                 riskScore,
                 mapRiskLevel(riskScore),
                 countLevel(comments, "CRITICAL"),
@@ -43,6 +46,11 @@ public class RiskScoreCalculator {
                 riskTypeBonus,
                 humanCheckBonus
         );
+
+        log.debug("[RiskScore] 计算完成, riskScore={}, riskLevel={}, baseScore={}, riskTypeBonus={}, humanCheckBonus={}",
+                riskScore, result.riskLevel(), baseScore, riskTypeBonus, humanCheckBonus);
+
+        return result;
     }
 
     private int levelBaseScore(String riskLevel) {

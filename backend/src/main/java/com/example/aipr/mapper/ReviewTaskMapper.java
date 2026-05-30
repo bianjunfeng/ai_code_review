@@ -23,4 +23,11 @@ public interface ReviewTaskMapper extends BaseMapper<ReviewTask> {
                          @Param("riskLevel") String riskLevel,
                          @Param("summary") String summary,
                          @Param("finalReview") String finalReview);
+
+    ReviewTask findLatestSuccessTaskForCache(@Param("ownerName") String ownerName,
+                                             @Param("repoName") String repoName,
+                                             @Param("prNumber") Integer prNumber,
+                                             @Param("headSha") String headSha,
+                                             @Param("modelName") String modelName,
+                                             @Param("promptVersion") String promptVersion);
 }

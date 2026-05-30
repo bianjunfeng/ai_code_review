@@ -69,8 +69,8 @@ export const mockReport = {
   finalReview: '建议修改高风险问题后再合并。'
 }
 
-export async function createReviewTask(prUrl) {
-  const response = await http.post('/api/review-tasks', { prUrl })
+export async function createReviewTask(prUrl, forceRefresh = false) {
+  const response = await http.post('/api/review-tasks', { prUrl, forceRefresh })
   return unwrapResult(response.data)
 }
 

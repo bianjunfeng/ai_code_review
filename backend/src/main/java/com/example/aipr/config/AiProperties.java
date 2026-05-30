@@ -14,6 +14,7 @@ public class AiProperties {
     private String modelName = "deepseek-chat";
     private Double temperature = 0.2;
     private Integer maxTokens = 3000;
+    private String promptVersion = "v1";
 
     public String getBaseUrl() {
         if (baseUrl == null) {
