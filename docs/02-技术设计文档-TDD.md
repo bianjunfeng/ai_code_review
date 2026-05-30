@@ -1036,31 +1036,29 @@ SUCCESS / FAILED / CANCELLED
 
 ```sql
 CREATE TABLE review_task (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    pr_url VARCHAR(500) NOT NULL COMMENT 'PR链接',
-    owner VARCHAR(100) NOT NULL COMMENT '仓库所有者',
-    repo VARCHAR(100) NOT NULL COMMENT '仓库名称',
-    pull_number INT NOT NULL COMMENT 'PR编号',
-    pr_title VARCHAR(500) COMMENT 'PR标题',
-    pr_description TEXT COMMENT 'PR描述',
-    pr_author VARCHAR(100) COMMENT 'PR作者',
-    source_branch VARCHAR(200) COMMENT '源分支',
-    target_branch VARCHAR(200) COMMENT '目标分支',
-    status VARCHAR(50) NOT NULL COMMENT '任务状态',
-    summary TEXT COMMENT 'AI总结',
-    merge_suggestion VARCHAR(50) COMMENT '合并建议',
-    high_count INT DEFAULT 0,
-    medium_count INT DEFAULT 0,
-    low_count INT DEFAULT 0,
-    info_count INT DEFAULT 0,
-    error_message TEXT COMMENT '错误信息',
-    started_at DATETIME COMMENT '开始时间',
-    finished_at DATETIME COMMENT '完成时间',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_repo_pr (owner, repo, pull_number),
-    INDEX idx_status (status),
-    INDEX idx_created_at (created_at)
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    pr_url VARCHAR(500) NOT NULL COMMENT 'GitHub Pull Request链接',
+    owner_name VARCHAR(100) DEFAULT NULL COMMENT 'GitHub仓库owner',
+    repo_name VARCHAR(150) DEFAULT NULL COMMENT 'GitHub仓库名称',
+    pr_number INT DEFAULT NULL COMMENT 'Pull Request编号',
+    pr_title VARCHAR(500) DEFAULT NULL COMMENT 'PR标题',
+    pr_author VARCHAR(100) DEFAULT NULL COMMENT 'PR作者',
+    source_branch VARCHAR(200) DEFAULT NULL COMMENT '源分支',
+    target_branch VARCHAR(200) DEFAULT NULL COMMENT '目标分支',
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' COMMENT '任务状态：PENDING/FETCHING_PR/PARSING_DIFF/REVIEWING/SUMMARIZING/SUCCESS/FAILED/CANCELLED',
+    risk_score INT DEFAULT NULL COMMENT '风险评分，范围0到100',
+    risk_level VARCHAR(20) DEFAULT NULL COMMENT '风险等级：LOW/MEDIUM/HIGH/INFO',
+    summary TEXT DEFAULT NULL COMMENT 'PR总结',
+    final_review TEXT DEFAULT NULL COMMENT '最终Review结论',
+    result_json LONGTEXT DEFAULT NULL COMMENT '完整AI Review结果JSON',
+    error_message TEXT DEFAULT NULL COMMENT '任务失败原因',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_pr_url (pr_url),
+    INDEX idx_repo_pr (owner_name, repo_name, pr_number),
+    INDEX idx_created_at (created_at),
+    INDEX idx_risk_level (risk_level),
+    INDEX idx_status (status)
 );
 ```
 
@@ -1068,22 +1066,22 @@ CREATE TABLE review_task (
 
 ```sql
 CREATE TABLE review_file (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    task_id BIGINT NOT NULL COMMENT '任务ID',
-    file_path VARCHAR(500) NOT NULL COMMENT '文件路径',
-    file_status VARCHAR(50) COMMENT '文件状态',
-    language VARCHAR(50) COMMENT '语言类型',
-    additions INT DEFAULT 0,
-    deletions INT DEFAULT 0,
-    changes INT DEFAULT 0,
-    patch LONGTEXT COMMENT 'Diff patch',
-    ai_summary TEXT COMMENT '文件级总结',
-    skipped TINYINT DEFAULT 0 COMMENT '是否跳过',
-    skip_reason VARCHAR(500) COMMENT '跳过原因',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    task_id BIGINT NOT NULL COMMENT '关联review_task.id',
+    file_path VARCHAR(600) DEFAULT NULL COMMENT '文件路径',
+    file_status VARCHAR(30) DEFAULT NULL COMMENT '文件状态：added/modified/removed/renamed',
+    language VARCHAR(50) DEFAULT NULL COMMENT '语言类型',
+    additions INT NOT NULL DEFAULT 0 COMMENT '新增行数',
+    deletions INT NOT NULL DEFAULT 0 COMMENT '删除行数',
+    changes INT NOT NULL DEFAULT 0 COMMENT '总变更行数',
+    patch LONGTEXT DEFAULT NULL COMMENT 'Diff patch内容',
+    ai_summary TEXT DEFAULT NULL COMMENT 'AI文件级总结',
+    skipped TINYINT NOT NULL DEFAULT 0 COMMENT '是否跳过AI分析：0否，1是',
+    skip_reason VARCHAR(500) DEFAULT NULL COMMENT '跳过原因',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX idx_task_id (task_id),
-    INDEX idx_file_path (file_path)
+    INDEX idx_file_path (file_path),
+    INDEX idx_skipped (skipped)
 );
 ```
 
@@ -1091,24 +1089,23 @@ CREATE TABLE review_file (
 
 ```sql
 CREATE TABLE review_comment (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    task_id BIGINT NOT NULL,
-    file_id BIGINT NOT NULL,
-    file_path VARCHAR(500) NOT NULL,
-    line_number INT COMMENT '代码行号',
-    risk_type VARCHAR(50) COMMENT '风险类型',
-    severity VARCHAR(50) COMMENT '风险等级',
-    title VARCHAR(300) COMMENT '问题标题',
-    description TEXT COMMENT '问题描述',
-    suggestion TEXT COMMENT '修改建议',
-    confidence DECIMAL(4,2) COMMENT '置信度',
-    need_human_check TINYINT DEFAULT 0 COMMENT '是否需要人工确认',
-    skill_code VARCHAR(100) COMMENT '产生该建议的Skill',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    task_id BIGINT NOT NULL COMMENT '关联review_task.id',
+    file_path VARCHAR(600) DEFAULT NULL COMMENT '风险所在文件路径',
+    line_number INT DEFAULT NULL COMMENT '代码行号',
+    risk_type VARCHAR(50) DEFAULT NULL COMMENT '风险类型：BUG_RISK/SECURITY_RISK/PERFORMANCE_RISK/MAINTAINABILITY/STYLE/TEST_RISK/COMPATIBILITY',
+    risk_level VARCHAR(20) DEFAULT NULL COMMENT '风险等级：LOW/MEDIUM/HIGH/INFO',
+    title VARCHAR(300) DEFAULT NULL COMMENT '问题标题',
+    description TEXT DEFAULT NULL COMMENT '问题描述',
+    reason TEXT DEFAULT NULL COMMENT '风险原因说明',
+    suggestion TEXT DEFAULT NULL COMMENT '修改建议',
+    confidence DECIMAL(4,2) DEFAULT NULL COMMENT '置信度：0到1之间的小数',
+    need_human_check TINYINT NOT NULL DEFAULT 0 COMMENT '是否需要人工确认：0否，1是',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX idx_task_id (task_id),
-    INDEX idx_file_id (file_id),
-    INDEX idx_severity (severity),
-    INDEX idx_risk_type (risk_type)
+    INDEX idx_risk_level (risk_level),
+    INDEX idx_risk_type (risk_type),
+    INDEX idx_task_level (task_id, risk_level)
 );
 ```
 
