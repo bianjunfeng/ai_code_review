@@ -23,6 +23,8 @@ public class AiReviewService {
     private final AiReviewOutputParser outputParser;
     private final LlmClient llmClient;
 
+    private static final int MAX_LOG_LENGTH = 200;
+
     private static final List<String> SKIP_EXTENSIONS = Arrays.asList(
             ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico",
             ".zip", ".jar", ".class", ".min.js"
@@ -73,7 +75,10 @@ public class AiReviewService {
         LlmResponse llmResponse = llmClient.chat(llmRequest);
 
         String rawOutput = llmResponse.getContent();
-        log.debug("LLM raw output for {}: {}", context.getFilePath(), rawOutput);
+        String outputSummary = rawOutput.length() > MAX_LOG_LENGTH
+                ? rawOutput.substring(0, MAX_LOG_LENGTH) + "..."
+                : rawOutput;
+        log.debug("LLM output for {}, length={}: {}", context.getFilePath(), rawOutput.length(), outputSummary);
 
         return outputParser.parseFileReview(rawOutput);
     }
