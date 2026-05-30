@@ -1,12 +1,4 @@
-import axios from 'axios'
-
-const http = axios.create({
-  baseURL: '',
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
+import { http, normalizePage, unwrapResult } from './request'
 
 export const mockReport = {
   taskId: 1,
@@ -74,6 +66,12 @@ export async function createReviewTask(prUrl, forceRefresh = false) {
   return unwrapResult(response.data)
 }
 
+export async function listReviewTasks(params = {}) {
+  const response = await http.get('/api/review-tasks', { params })
+  const data = unwrapResult(response.data)
+  return normalizePage(data, params.page, params.pageSize)
+}
+
 export async function getReviewReport(taskId) {
   const response = await http.get(`/api/review-tasks/${taskId}/report`)
   return unwrapResult(response.data)
@@ -84,18 +82,17 @@ export async function getReviewTask(taskId) {
   return unwrapResult(response.data)
 }
 
-export function unwrapResult(payload) {
-  if (!payload) {
-    return null
-  }
-  if (Object.hasOwn(payload, 'code')) {
-    if (payload.code !== 0) {
-      throw new Error(payload.message || '请求失败')
-    }
-    if (payload.data && typeof payload.data === 'object' && Object.hasOwn(payload.data, 'code')) {
-      return unwrapResult(payload.data)
-    }
-    return payload.data
-  }
-  return payload
+export async function getReviewFiles(taskId) {
+  const response = await http.get(`/api/review-tasks/${taskId}/files`)
+  return unwrapResult(response.data) || []
+}
+
+export async function getReviewComments(taskId, params = {}) {
+  const response = await http.get(`/api/review-tasks/${taskId}/comments`, { params })
+  return unwrapResult(response.data) || []
+}
+
+export async function getReviewMarkdown(taskId) {
+  const response = await http.get(`/api/review-tasks/${taskId}/review-markdown`)
+  return unwrapResult(response.data)
 }
