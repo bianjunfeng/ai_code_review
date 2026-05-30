@@ -1,6 +1,5 @@
 package com.example.aipr.service.review;
 
-<<<<<<< Updated upstream
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.aipr.common.BusinessException;
 import com.example.aipr.entity.ReviewComment;
@@ -15,11 +14,6 @@ import com.example.aipr.service.github.GitHubChangedFile;
 import com.example.aipr.service.github.GitHubClient;
 import com.example.aipr.service.github.GitHubPrInfo;
 import com.example.aipr.service.github.ParsedPrUrl;
-=======
-import com.example.aipr.entity.ReviewTask;
-import com.example.aipr.enums.ReviewTaskStatus;
-import com.example.aipr.mapper.ReviewTaskMapper;
->>>>>>> Stashed changes
 import com.example.aipr.service.github.PrUrlParser;
 import com.example.aipr.service.prompt.PromptRenderer;
 import com.example.aipr.vo.ReviewCommentVO;
@@ -29,20 +23,17 @@ import com.example.aipr.vo.ReviewTaskDetailVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-<<<<<<< Updated upstream
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-=======
->>>>>>> Stashed changes
 @Service
 @RequiredArgsConstructor
 public class ReviewTaskService {
 
-<<<<<<< Updated upstream
-    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final PrUrlParser prUrlParser;
     private final GitHubClient gitHubClient;
@@ -58,11 +49,13 @@ public class ReviewTaskService {
 
         try {
             updateStatus(task.getId(), ReviewTaskStatus.FETCHING_PR, null);
+
             GitHubPrInfo prInfo = gitHubClient.getPullRequest(parsedPrUrl);
             fillPullRequestInfo(task, prInfo);
             reviewTaskMapper.updateById(task);
 
             updateStatus(task.getId(), ReviewTaskStatus.PARSING_DIFF, null);
+
             List<GitHubChangedFile> changedFiles = gitHubClient.getPullRequestFiles(parsedPrUrl);
             saveChangedFiles(task.getId(), changedFiles);
 
@@ -85,6 +78,7 @@ public class ReviewTaskService {
 
     public List<ReviewFileVO> listFiles(Long taskId) {
         requireTask(taskId);
+
         return reviewFileMapper.findByTaskId(taskId)
                 .stream()
                 .map(this::toFileVO)
@@ -93,14 +87,18 @@ public class ReviewTaskService {
 
     public List<ReviewCommentVO> listComments(Long taskId, String riskLevel, String riskType) {
         requireTask(taskId);
+
         LambdaQueryWrapper<ReviewComment> wrapper = new LambdaQueryWrapper<ReviewComment>()
                 .eq(ReviewComment::getTaskId, taskId);
+
         if (riskLevel != null && !riskLevel.isBlank()) {
             wrapper.eq(ReviewComment::getRiskLevel, riskLevel);
         }
+
         if (riskType != null && !riskType.isBlank()) {
             wrapper.eq(ReviewComment::getRiskType, riskType);
         }
+
         wrapper.orderByAsc(ReviewComment::getId);
 
         return reviewCommentMapper.selectList(wrapper)
@@ -111,9 +109,11 @@ public class ReviewTaskService {
 
     public ReviewTask requireTask(Long taskId) {
         ReviewTask task = reviewTaskMapper.selectById(taskId);
+
         if (task == null) {
             throw new BusinessException(ErrorCode.REVIEW_TASK_NOT_FOUND);
         }
+
         return task;
     }
 
@@ -126,7 +126,9 @@ public class ReviewTaskService {
         task.setStatus(ReviewTaskStatus.PENDING.name());
         task.setCreatedAt(LocalDateTime.now());
         task.setUpdatedAt(LocalDateTime.now());
+
         reviewTaskMapper.insert(task);
+
         return task;
     }
 
@@ -146,6 +148,7 @@ public class ReviewTaskService {
         List<ReviewFile> files = changedFiles.stream()
                 .map(file -> toReviewFile(taskId, file))
                 .toList();
+
         reviewFileMapper.insertBatch(files);
     }
 
@@ -161,6 +164,7 @@ public class ReviewTaskService {
         file.setPatch(changedFile.getPatch());
         file.setSkipped(false);
         file.setCreatedAt(LocalDateTime.now());
+
         return file;
     }
 
@@ -170,6 +174,7 @@ public class ReviewTaskService {
         update.setStatus(status.name());
         update.setErrorMessage(errorMessage);
         update.setUpdatedAt(LocalDateTime.now());
+
         reviewTaskMapper.updateById(update);
     }
 
@@ -187,26 +192,6 @@ public class ReviewTaskService {
                 .errorMessage(task.getErrorMessage())
                 .createdAt(formatTime(task.getCreatedAt()))
                 .updatedAt(formatTime(task.getUpdatedAt()))
-=======
-    private final ReviewTaskMapper reviewTaskMapper;
-    private final PrUrlParser prUrlParser;
-
-    public ReviewTaskCreatedVO createTask(String prUrl) {
-        var parsed = prUrlParser.parse(prUrl);
-
-        ReviewTask task = new ReviewTask();
-        task.setPrUrl(prUrl);
-        task.setOwnerName(parsed.owner());
-        task.setRepoName(parsed.repo());
-        task.setPrNumber(parsed.pullNumber());
-        task.setStatus(ReviewTaskStatus.PENDING.name());
-
-        reviewTaskMapper.insert(task);
-
-        return ReviewTaskCreatedVO.builder()
-                .taskId(task.getId())
-                .status(task.getStatus())
->>>>>>> Stashed changes
                 .build();
     }
 
@@ -228,6 +213,7 @@ public class ReviewTaskService {
 
     private ReviewCommentVO toCommentVO(ReviewComment comment) {
         BigDecimal confidence = comment.getConfidence();
+
         return ReviewCommentVO.builder()
                 .id(comment.getId())
                 .taskId(comment.getTaskId())
