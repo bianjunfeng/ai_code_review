@@ -13,7 +13,8 @@
       "Bash(powershell -Command \"Get-Process -Id 140704 | Select-Object ProcessName,Path,CommandLine | Format-List\")",
       "Bash(curl -s http://localhost:5173)",
       "Bash(curl -s http://localhost:5173/src/main.js)",
-      "Bash(taskkill //F //PID 140704)"
+      "Bash(taskkill //F //PID 140704)",
+      "Bash(git fetch origin)"
     ]
   }
 }
