@@ -19,6 +19,11 @@
         <result column="final_review" property="finalReview"/>
         <result column="result_json" property="resultJson"/>
         <result column="error_message" property="errorMessage"/>
+        <result column="head_sha" property="headSha"/>
+        <result column="base_sha" property="baseSha"/>
+        <result column="model_name" property="modelName"/>
+        <result column="prompt_version" property="promptVersion"/>
+        <result column="cached_from_task_id" property="cachedFromTaskId"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
@@ -26,7 +31,9 @@
     <sql id="Base_Column_List">
         id, pr_url, owner_name, repo_name, pr_number, pr_title, pr_author,
         source_branch, target_branch, status, risk_score, risk_level,
-        summary, final_review, result_json, error_message, created_at, updated_at
+        summary, final_review, result_json, error_message,
+        head_sha, base_sha, model_name, prompt_version, cached_from_task_id,
+        created_at, updated_at
     </sql>
 
     <select id="findByPrUrl" resultMap="BaseResultMap">
@@ -66,5 +73,18 @@
             updated_at = NOW()
         WHERE id = #{taskId}
     </update>
+
+    <select id="findLatestSuccessTaskForCache" resultMap="BaseResultMap">
+        SELECT * FROM review_task
+        WHERE owner_name = #{ownerName}
+          AND repo_name = #{repoName}
+          AND pr_number = #{prNumber}
+          AND head_sha = #{headSha}
+          AND model_name = #{modelName}
+          AND prompt_version = #{promptVersion}
+          AND status = 'SUCCESS'
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
 
 </mapper>

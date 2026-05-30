@@ -60,6 +60,8 @@ public class GitHubClient {
                 .sourceBranch(root.path("head").path("ref").asText(""))
                 .targetBranch(root.path("base").path("ref").asText(""))
                 .state(root.path("state").asText("").toUpperCase(Locale.ROOT))
+                .headSha(root.path("head").path("sha").asText(""))
+                .baseSha(root.path("base").path("sha").asText(""))
                 .additions(root.path("additions").asInt(0))
                 .deletions(root.path("deletions").asInt(0))
                 .changedFiles(root.path("changed_files").asInt(0))

@@ -41,6 +41,13 @@ public class ReviewTask {
 
     private String errorMessage;
 
+    // 缓存相关字段
+    private String headSha;
+    private String baseSha;
+    private String modelName;
+    private String promptVersion;
+    private Long cachedFromTaskId;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 
