@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.aipr.mapper.ReviewSkillMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.aipr.entity.ReviewSkill">
+        <id column="id" property="id"/>
+        <result column="skill_code" property="skillCode"/>
+        <result column="skill_name" property="skillName"/>
+        <result column="skill_type" property="skillType"/>
+        <result column="description" property="description"/>
+        <result column="supported_languages" property="supportedLanguages"/>
+        <result column="enabled" property="enabled"/>
+        <result column="priority" property="priority"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, skill_code, skill_name, skill_type, description,
+        supported_languages, enabled, priority, created_at, updated_at
+    </sql>
+
+    <select id="findAllEnabled" resultMap="BaseResultMap">
+        SELECT * FROM review_skill
+        WHERE enabled = 1
+        ORDER BY priority ASC
+    </select>
+
+    <select id="findByLanguage" resultMap="BaseResultMap">
+        SELECT * FROM review_skill
+        WHERE supported_languages LIKE CONCAT('%', #{language}, '%')
+          AND enabled = 1
+        ORDER BY priority ASC
+    </select>
+
+    <select id="findBySkillCode" resultMap="BaseResultMap">
+        SELECT * FROM review_skill
+        WHERE skill_code = #{skillCode}
+        LIMIT 1
+    </select>
+
+</mapper>
