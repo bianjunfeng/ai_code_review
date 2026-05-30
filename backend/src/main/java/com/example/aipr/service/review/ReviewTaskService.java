@@ -1,5 +1,6 @@
 package com.example.aipr.service.review;
 
+<<<<<<< Updated upstream
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.aipr.common.BusinessException;
 import com.example.aipr.entity.ReviewComment;
@@ -14,6 +15,11 @@ import com.example.aipr.service.github.GitHubChangedFile;
 import com.example.aipr.service.github.GitHubClient;
 import com.example.aipr.service.github.GitHubPrInfo;
 import com.example.aipr.service.github.ParsedPrUrl;
+=======
+import com.example.aipr.entity.ReviewTask;
+import com.example.aipr.enums.ReviewTaskStatus;
+import com.example.aipr.mapper.ReviewTaskMapper;
+>>>>>>> Stashed changes
 import com.example.aipr.service.github.PrUrlParser;
 import com.example.aipr.service.prompt.PromptRenderer;
 import com.example.aipr.vo.ReviewCommentVO;
@@ -23,15 +29,19 @@ import com.example.aipr.vo.ReviewTaskDetailVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+<<<<<<< Updated upstream
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+=======
+>>>>>>> Stashed changes
 @Service
 @RequiredArgsConstructor
 public class ReviewTaskService {
 
+<<<<<<< Updated upstream
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final PrUrlParser prUrlParser;
@@ -177,6 +187,26 @@ public class ReviewTaskService {
                 .errorMessage(task.getErrorMessage())
                 .createdAt(formatTime(task.getCreatedAt()))
                 .updatedAt(formatTime(task.getUpdatedAt()))
+=======
+    private final ReviewTaskMapper reviewTaskMapper;
+    private final PrUrlParser prUrlParser;
+
+    public ReviewTaskCreatedVO createTask(String prUrl) {
+        var parsed = prUrlParser.parse(prUrl);
+
+        ReviewTask task = new ReviewTask();
+        task.setPrUrl(prUrl);
+        task.setOwnerName(parsed.owner());
+        task.setRepoName(parsed.repo());
+        task.setPrNumber(parsed.pullNumber());
+        task.setStatus(ReviewTaskStatus.PENDING.name());
+
+        reviewTaskMapper.insert(task);
+
+        return ReviewTaskCreatedVO.builder()
+                .taskId(task.getId())
+                .status(task.getStatus())
+>>>>>>> Stashed changes
                 .build();
     }
 
