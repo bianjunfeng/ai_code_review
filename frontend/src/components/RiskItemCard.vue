@@ -52,7 +52,7 @@ const props = defineProps({
 const level = computed(() => String(props.item.riskLevel || 'LOW').toUpperCase())
 
 const tagType = computed(() => {
-  if (level.value === 'HIGH') {
+  if (level.value === 'CRITICAL' || level.value === 'HIGH') {
     return 'danger'
   }
   if (level.value === 'MEDIUM') {
@@ -117,6 +117,10 @@ async function copyComment() {
 
 .risk-item--high {
   border-left-color: #d93025;
+}
+
+.risk-item--critical {
+  border-left-color: #8f1d18;
 }
 
 .risk-item--medium {

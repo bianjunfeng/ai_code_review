@@ -57,7 +57,7 @@ Prompt 设计需要同时满足代码评审质量、工程稳定性和前端展�
 
 5. **明确区分风险等级**
 
-   风险等级分为 `HIGH`、`MEDIUM`、`LOW`。高风险建议修改后再合并，中风险建议确认，低风险作为优化提醒。
+   风险等级分为 `CRITICAL`、`HIGH`、`MEDIUM`、`LOW`、`INFO`。严重/高风险建议修改后再合并，中风险建议确认，低风险作为优化提醒。
 
 6. **结合规则扫描结果，但不盲目相信规则扫描结果**
 
@@ -198,12 +198,12 @@ Diff 内容:
 | --- | --- | --- |
 | `summary` | string | PR 总体变更摘要。 |
 | `riskScore` | number | 风险分，范围 0-100，分数越高表示风险越高。 |
-| `riskLevel` | string | 总体风险等级：`LOW`、`MEDIUM`、`HIGH`。 |
+| `riskLevel` | string | 总体风险等级：`LOW`、`MEDIUM`、`HIGH`、`CRITICAL`。 |
 | `mainChanges` | array | 主要变更点，建议 3-8 条。 |
 | `affectedModules` | array | 受影响模块，例如 auth、config、frontend、database。 |
 | `riskItems` | array | 具体风险项列表。 |
 | `riskItems[].filePath` | string | 风险所在文件路径。 |
-| `riskItems[].riskLevel` | string | 单项风险等级：`LOW`、`MEDIUM`、`HIGH`。 |
+| `riskItems[].riskLevel` | string | 单项风险等级：`INFO`、`LOW`、`MEDIUM`、`HIGH`、`CRITICAL`。 |
 | `riskItems[].riskType` | string | 后端统一风险枚举，建议使用 `BUG_RISK`、`SECURITY_RISK`、`PERFORMANCE_RISK`、`MAINTAINABILITY`、`STYLE`、`TEST_RISK`、`COMPATIBILITY`。 |
 | `riskItems[].riskCategory` | string | 细分风险维度，例如 `SQL_INJECTION`、`AUTH`、`CONFIG`、`NULL_POINTER`。 |
 | `riskItems[].description` | string | 风险问题描述。 |
@@ -231,7 +231,7 @@ Diff 内容:
       "line": null,
       "riskType": "SECURITY_RISK",
       "riskCategory": "AUTH",
-      "severity": "HIGH",
+      "riskLevel": "HIGH",
       "title": "登录失败次数未限制",
       "description": "当前登录逻辑没有看到失败次数限制或锁定策略，可能被暴力破解。",
       "suggestion": "建议增加登录失败次数限制、短时间锁定或验证码策略，并补充对应测试。",
@@ -246,7 +246,7 @@ Diff 内容:
 
 - `riskType` 使用项目后端稳定枚举，避免前后端展示不一致。
 - `riskCategory` 用于展示更细的风险类型，不建议在 MVP 阶段直接扩展为后端主枚举。
-- `severity` 可映射到统一报告中的 `riskLevel`。
+- `riskLevel` 是评论级风险等级；后端仍兼容旧字段 `severity`，但最终报告的 `riskScore` 和 `riskLevel` 由后端固定规则重新计算。
 - `confidence` 使用 0-1 数值，便于后端排序和阈值判断。
 
 ## 6. System Prompt
@@ -300,9 +300,11 @@ System Prompt 用于统一模型角色、边界和输出规范。该 Prompt 应�
 12. 所有中文描述应简洁、专业，适合直接展示在前端 Review 报告中。
 
 风险等级定义：
+- CRITICAL：严重风险，建议修复并完成人工复核后再合并。
 - HIGH：高风险，建议修改后再合并。
 - MEDIUM：中风险，建议修改或人工确认。
 - LOW：低风险，不阻塞合并，可作为优化建议。
+- INFO：提示信息，不一定需要修改。
 
 最终评审结论定义：
 - APPROVE：未发现阻塞问题，可以合并。
@@ -500,9 +502,11 @@ Diff 内容:
 - riskCategory 用于细分风险，可使用：SECURITY、SQL_INJECTION、AUTH、CONFIG、EXCEPTION、NULL_POINTER、PERFORMANCE、READABILITY、TEST_MISSING、LOGGING、DEPENDENCY、LARGE_DELETION。
 
 风险等级约束：
+- CRITICAL：严重风险，建议修复并完成人工复核后再合并。
 - HIGH：高风险，建议修改后再合并。
 - MEDIUM：中风险，建议修改或人工确认。
 - LOW：低风险，不阻塞合并。
+- INFO：提示信息，不一定需要修改。
 
 置信度约束：
 - confidence 使用 0 到 1 的数字。
@@ -835,9 +839,11 @@ Diff 内容:
 - riskCategory 可使用：SECURITY、SQL_INJECTION、AUTH、CONFIG、EXCEPTION、NULL_POINTER、PERFORMANCE、READABILITY、TEST_MISSING、LOGGING、DEPENDENCY、LARGE_DELETION。
 
 风险等级约束：
+- CRITICAL：严重风险，建议修复并完成人工复核后再合并。
 - HIGH：高风险，建议修改后再合并。
 - MEDIUM：中风险，建议修改或人工确认。
 - LOW：低风险，不阻塞合并。
+- INFO：提示信息，不一定需要修改。
 
 最终评审结论约束：
 - APPROVE：可以合并。
@@ -878,12 +884,12 @@ Diff 内容:
   "finalReview": "最终评审结论说明。"
 }
 
-riskScore 计算建议：
-- 无明确风险：0-20。
-- 只有 LOW 风险：21-40。
-- 存在 MEDIUM 风险：41-70。
-- 存在 HIGH 风险：71-100。
-- 如果 HIGH 风险 confidence >= 0.8，riskLevel 应为 HIGH，finalReviewDecision 应为 REQUEST_CHANGES。
+最终 riskScore / riskLevel 计算规则：
+- 后端基于所有已保存的 Review Comment 统一计算最终 riskScore / riskLevel，不直接采用 AI 输出的总评分。
+- 风险等级基础分：INFO=0，LOW=8，MEDIUM=20，HIGH=40，CRITICAL=70。
+- 风险类型加分只取最高一项：SECURITY/SECURITY_RISK=20，BUG_RISK=15，PERFORMANCE/PERFORMANCE_RISK=10，MAINTAINABILITY=5，STYLE/INFO=0。
+- needHumanCheck=true 每条 +5，最多 +15。
+- 映射：0-30=LOW，31-60=MEDIUM，61-85=HIGH，86-100=CRITICAL。
 ```
 
 ### 11.4 输出示例

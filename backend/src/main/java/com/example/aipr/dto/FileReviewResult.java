@@ -12,4 +12,5 @@ public class FileReviewResult {
     private String filePath;
     private String summary;
     private List<FileReviewCommentResult> comments;
+    private String rawOutput;
 }

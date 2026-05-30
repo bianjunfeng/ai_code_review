@@ -30,12 +30,13 @@ class AiReviewServiceTest {
     void reviewFile_validJson_returnsFileReviewResult() {
         String validJson = """
             {
+              "filePath": "src/main/java/com/example/AuthService.java",
               "summary": "该文件修改了用户认证逻辑",
               "comments": [
                 {
-                  "lineNumber": 42,
+                  "line": 42,
                   "riskType": "BUG_RISK",
-                  "riskLevel": "HIGH",
+                  "severity": "HIGH",
                   "title": "空指针风险",
                   "description": "user对象可能为null",
                   "reason": "在user.getName()前未做null检查",
@@ -66,9 +67,9 @@ class AiReviewServiceTest {
         assertEquals("src/main/java/com/example/AuthService.java", result.getFilePath());
         assertEquals("该文件修改了用户认证逻辑", result.getSummary());
         assertEquals(1, result.getComments().size());
-        assertEquals(42, result.getComments().get(0).getLineNumber());
+        assertEquals(42, result.getComments().get(0).getLine());
         assertEquals("BUG_RISK", result.getComments().get(0).getRiskType());
-        assertEquals("HIGH", result.getComments().get(0).getRiskLevel());
+        assertEquals("HIGH", result.getComments().get(0).getSeverity());
         assertEquals(0.85, result.getComments().get(0).getConfidence());
     }
 
@@ -79,12 +80,13 @@ class AiReviewServiceTest {
 
             ```json
             {
+              "filePath": "src/utils/helper.js",
               "summary": "代码格式问题",
               "comments": [
                 {
-                  "lineNumber": 10,
+                  "line": 10,
                   "riskType": "STYLE",
-                  "riskLevel": "LOW",
+                  "severity": "LOW",
                   "title": "缺少分号",
                   "description": "语句未以分号结尾",
                   "reason": "不符合团队代码规范",
@@ -284,17 +286,17 @@ class AiReviewServiceTest {
     }
 
     @Test
-    void reviewFile_emptyFilePath_throwsException() {
+    void reviewFile_emptyFilePathWithEmptyModelResponse_throwsBusinessException() {
         AiReviewContext context = AiReviewContext.builder()
                 .prTitle("Test PR")
                 .filePath("")
                 .patch("+ some code")
                 .build();
 
-        FileReviewResult result = aiReviewService.reviewFile(context);
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> aiReviewService.reviewFile(context));
 
-        assertNotNull(result);
-        assertEquals("该文件类型暂不进行 AI Review", result.getSummary());
+        assertEquals(ErrorCode.AI_RESPONSE_PARSE_ERROR.getCode(), exception.getCode());
     }
 
     @Test

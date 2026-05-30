@@ -58,7 +58,7 @@ public class PromptRenderer {
         prompt.append("    {\n");
         prompt.append("      \"line\": null 或行号,\n");
         prompt.append("      \"riskType\": \"BUG_RISK|SECURITY_RISK|PERFORMANCE_RISK|MAINTAINABILITY|STYLE|TEST_RISK|COMPATIBILITY\",\n");
-        prompt.append("      \"severity\": \"HIGH|MEDIUM|LOW|INFO\",\n");
+        prompt.append("      \"riskLevel\": \"CRITICAL|HIGH|MEDIUM|LOW|INFO\",\n");
         prompt.append("      \"title\": \"风险项标题\",\n");
         prompt.append("      \"description\": \"详细描述\",\n");
         prompt.append("      \"suggestion\": \"建议\",\n");

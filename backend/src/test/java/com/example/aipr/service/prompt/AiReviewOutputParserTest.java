@@ -174,6 +174,27 @@ class AiReviewOutputParserTest {
     }
 
     @Test
+    void parseFileReview_riskLevelAlias_parsesAsSeverity() {
+        String rawOutput = """
+                {
+                  "filePath": "Critical.java",
+                  "summary": "Test",
+                  "comments": [
+                    {
+                      "riskType": "SECURITY_RISK",
+                      "riskLevel": "CRITICAL",
+                      "title": "Test"
+                    }
+                  ]
+                }
+                """;
+
+        FileReviewResult result = parser.parseFileReview(rawOutput);
+
+        assertEquals("CRITICAL", result.getComments().get(0).getSeverity());
+    }
+
+    @Test
     void parseFileReview_missingTitle_defaultsToCodeReviewSuggestion() {
         String rawOutput = """
                 {
