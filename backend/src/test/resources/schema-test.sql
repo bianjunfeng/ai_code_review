@@ -21,6 +21,11 @@ CREATE TABLE review_task (
     final_review CLOB,
     result_json CLOB,
     error_message CLOB,
+    head_sha VARCHAR(64),
+    base_sha VARCHAR(64),
+    model_name VARCHAR(100),
+    prompt_version VARCHAR(50) DEFAULT 'v1',
+    cached_from_task_id BIGINT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -30,6 +35,7 @@ CREATE INDEX idx_review_task_repo_pr ON review_task (owner_name, repo_name, pr_n
 CREATE INDEX idx_review_task_created_at ON review_task (created_at);
 CREATE INDEX idx_review_task_risk_level ON review_task (risk_level);
 CREATE INDEX idx_review_task_status ON review_task (status);
+CREATE INDEX idx_review_task_cache ON review_task (owner_name, repo_name, pr_number, head_sha, model_name, prompt_version, status);
 
 CREATE TABLE review_file (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
