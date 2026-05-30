@@ -79,6 +79,11 @@ export async function getReviewReport(taskId) {
   return unwrapResult(response.data)
 }
 
+export async function getReviewTask(taskId) {
+  const response = await http.get(`/api/review-tasks/${taskId}`)
+  return unwrapResult(response.data)
+}
+
 export function unwrapResult(payload) {
   if (!payload) {
     return null

@@ -14,7 +14,13 @@
       "Bash(curl -s http://localhost:5173)",
       "Bash(curl -s http://localhost:5173/src/main.js)",
       "Bash(taskkill //F //PID 140704)",
-      "Bash(git fetch origin)"
+      "Bash(git fetch origin)",
+      "Bash(mvn test -q)",
+      "Bash(where mvn)",
+      "Bash(D:CodeCode_Appapache-maven-3.9.11binmvn.cmd test)",
+      "Bash(mvn test -Dtest=AiReviewServiceTest)",
+      "Bash(cmd.exe /c \"cd /d D:\\\\code1\\\\ai_code_review\\\\backend && mvn test -Dtest=AiReviewServiceTest\")",
+      "Bash(mvn compile test-compile)"
     ]
   }
 }
