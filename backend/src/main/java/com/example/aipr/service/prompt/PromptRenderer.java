@@ -39,6 +39,7 @@ public class PromptRenderer {
             prompt.append("该文件无内容变更或无法获取变更内容。\n");
         } else {
             boolean truncated = patch.length() > MAX_PATCH_LENGTH;
+            context.setTruncated(truncated);
             if (truncated) {
                 patch = patch.substring(0, MAX_PATCH_LENGTH);
                 prompt.append("代码变更 (diff)：\n").append(patch).append("\n");
