@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"D:\\\\code1\\\\ai_code_review\\\\frontend\")",
+      "Bash(mvn test)",
+      "Bash(npm run build)",
+      "Bash(mvn test -Dtest=AiReviewOutputParserTest)",
+      "Bash(npm run dev)",
+      "Bash(netstat -ano)",
+      "Bash(wmic process where processid=140704 get name,commandline)",
+      "Bash(tasklist /FI \"PID eq 140704\")",
+      "Bash(tasklist)",
+      "Bash(powershell -Command \"Get-Process -Id 140704 | Select-Object ProcessName,Path,CommandLine | Format-List\")",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s http://localhost:5173/src/main.js)",
+      "Bash(taskkill //F //PID 140704)"
+    ]
+  }
+}

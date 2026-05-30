@@ -4,9 +4,11 @@
       <div class="risk-tags">
         <el-tag :type="tagType" effect="dark">{{ level }}</el-tag>
         <el-tag effect="plain">{{ item.riskType || 'UNKNOWN' }}</el-tag>
-        <el-tag v-if="item.confidence" type="info" effect="plain">置信度 {{ item.confidence }}</el-tag>
+        <el-tag v-if="item.confidence != null" type="info" effect="plain">
+          置信度 {{ formatConfidence(item.confidence) }}
+        </el-tag>
       </div>
-      <el-button v-if="item.comment" :icon="CopyDocument" plain @click="copyComment">复制评论</el-button>
+      <el-button :icon="CopyDocument" plain @click="copyComment">复制评论</el-button>
     </div>
 
     <div class="file-path mono">{{ item.filePath || '未返回文件路径' }}</div>
@@ -66,8 +68,21 @@ const levelClass = computed(() => {
   return `risk-item--${level.value.toLowerCase()}`
 })
 
+function formatConfidence(value) {
+  const num = Number(value)
+  if (Number.isNaN(num)) {
+    return 'N/A'
+  }
+  return Math.round(num * 100) + '%'
+}
+
 async function copyComment() {
-  const text = props.item.comment || ''
+  let text = props.item.comment
+  if (!text) {
+    const parts = [props.item.title, props.item.description, props.item.suggestion].filter(Boolean)
+    text = parts.join('\n\n')
+  }
+
   if (!text) {
     ElMessage.warning('暂无可复制评论')
     return

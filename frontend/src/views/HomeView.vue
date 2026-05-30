@@ -50,7 +50,7 @@
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { WarningFilled } from '@element-plus/icons-vue'
-import { analyzeReview, mockReport } from '../api/review'
+import { createReviewTask, getReviewReport, mockReport } from '../api/review'
 import HeaderBar from '../components/HeaderBar.vue'
 import PrInputCard from '../components/PrInputCard.vue'
 import PrInfoCard from '../components/PrInfoCard.vue'
@@ -63,14 +63,23 @@ import FinalReviewCard from '../components/FinalReviewCard.vue'
 const prUrl = ref('')
 const loading = ref(false)
 const report = ref(null)
-const useMock = ref(true)
+const useMock = ref(false)
 
 const riskItems = computed(() => {
   return Array.isArray(report.value?.riskItems) ? report.value.riskItems : []
 })
 
 function isValidPrUrl(value) {
-  return /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/\d+\/?$/i.test(value)
+  if (!value) return false
+  const pattern = /^https:\/\/github\.com\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+\/pull\/\d+\/?$/i
+  if (!pattern.test(value)) return false
+
+  const match = value.match(/\/pull\/(\d+)/)
+  if (match) {
+    const pullNumber = parseInt(match[1], 10)
+    if (pullNumber < 1 || pullNumber > 99999) return false
+  }
+  return true
 }
 
 async function handleAnalyze() {
@@ -87,6 +96,7 @@ async function handleAnalyze() {
   }
 
   loading.value = true
+  report.value = null
 
   try {
     if (useMock.value) {
@@ -102,11 +112,22 @@ async function handleAnalyze() {
       return
     }
 
-    const result = await analyzeReview(value)
-    report.value = result || null
-    ElMessage.success('分析完成')
+    const created = await createReviewTask(value)
+    const taskId = created?.taskId
+    if (!taskId) {
+      throw new Error('创建任务失败，未返回 taskId')
+    }
+    report.value = await getReviewReport(taskId)
+    ElMessage.success('评审报告已生成')
   } catch (error) {
-    const message = error?.response?.data?.message || error?.message || 'AI 分析失败，请稍后重试'
+    let message = 'AI 分析失败，请稍后重试'
+    if (error?.response?.data?.code === 0 && error?.response?.data?.message) {
+      message = error.response.data.message
+    } else if (error?.response?.data?.message) {
+      message = error.response.data.message
+    } else if (error?.message && error.message.indexOf('.') === -1) {
+      message = error.message
+    }
     ElMessage.error(message)
   } finally {
     loading.value = false

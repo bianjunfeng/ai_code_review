@@ -10,6 +10,7 @@ import java.util.List;
 public class ReviewReportVO {
 
     private Long taskId;
+    private PrInfoVO prInfo;
     private String summary;
     private Integer riskScore;
     private String riskLevel;
