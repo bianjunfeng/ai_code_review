@@ -50,7 +50,7 @@
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { WarningFilled } from '@element-plus/icons-vue'
-import { createReviewTask, getReviewReport, mockReport } from '../api/review'
+import { createReviewTask, getReviewReport, getReviewTask, mockReport } from '../api/review'
 import HeaderBar from '../components/HeaderBar.vue'
 import PrInputCard from '../components/PrInputCard.vue'
 import PrInfoCard from '../components/PrInfoCard.vue'
@@ -117,8 +117,21 @@ async function handleAnalyze() {
     if (!taskId) {
       throw new Error('创建任务失败，未返回 taskId')
     }
-    report.value = await getReviewReport(taskId)
-    ElMessage.success('评审报告已生成')
+
+    const taskStatus = await pollReviewTaskStatus(taskId)
+
+    if (taskStatus === 'SUCCESS') {
+      report.value = await getReviewReport(taskId)
+      ElMessage.success('评审报告已生成')
+    } else if (taskStatus === 'FAILED') {
+      const task = await getReviewTask(taskId).catch(() => null)
+      const errorMsg = task?.errorMessage || 'AI 分析失败，请稍后重试'
+      throw new Error(errorMsg)
+    } else if (taskStatus === 'CANCELLED') {
+      throw new Error('任务已取消')
+    } else {
+      throw new Error('AI 分析耗时较长，请稍后刷新报告')
+    }
   } catch (error) {
     let message = 'AI 分析失败，请稍后重试'
     if (error?.response?.data?.code === 0 && error?.response?.data?.message) {
@@ -132,6 +145,25 @@ async function handleAnalyze() {
   } finally {
     loading.value = false
   }
+}
+
+const POLL_INTERVAL_MS = 2000
+const MAX_POLL_COUNT = 90
+const POLLING_STATUSES = ['PENDING', 'FETCHING_PR', 'PARSING_DIFF', 'REVIEWING', 'SUMMARIZING']
+
+async function pollReviewTaskStatus(taskId) {
+  for (let i = 0; i < MAX_POLL_COUNT; i++) {
+    await new Promise((resolve) => window.setTimeout(resolve, POLL_INTERVAL_MS))
+
+    const task = await getReviewTask(taskId).catch(() => null)
+    if (!task) continue
+
+    const status = task.status
+    if (!POLLING_STATUSES.includes(status)) {
+      return status
+    }
+  }
+  return null
 }
 
 function handleClear() {
