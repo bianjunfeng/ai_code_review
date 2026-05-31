@@ -324,5 +324,10 @@ class AiReviewServiceTest {
                     .finishReason("stop")
                     .build();
         }
+
+        @Override
+        public LlmResponse chat(LlmRequest request, LlmCallContext context) {
+            return chat(request);
+        }
     }
 }

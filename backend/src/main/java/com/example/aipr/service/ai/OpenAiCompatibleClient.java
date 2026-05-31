@@ -2,7 +2,9 @@ package com.example.aipr.service.ai;
 
 import com.example.aipr.common.BusinessException;
 import com.example.aipr.config.AiProperties;
+import com.example.aipr.entity.ModelUsageLog;
 import com.example.aipr.enums.ErrorCode;
+import com.example.aipr.service.monitor.ModelUsageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +16,8 @@ import okhttp3.Response;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -23,10 +27,12 @@ public class OpenAiCompatibleClient implements LlmClient {
     private final AiProperties aiProperties;
     private final ObjectMapper objectMapper;
     private final OkHttpClient httpClient;
+    private final ModelUsageService modelUsageService;
 
-    public OpenAiCompatibleClient(AiProperties aiProperties, ObjectMapper objectMapper) {
+    public OpenAiCompatibleClient(AiProperties aiProperties, ObjectMapper objectMapper, ModelUsageService modelUsageService) {
         this.aiProperties = aiProperties;
         this.objectMapper = objectMapper;
+        this.modelUsageService = modelUsageService;
         this.httpClient = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(120, TimeUnit.SECONDS)
@@ -37,6 +43,11 @@ public class OpenAiCompatibleClient implements LlmClient {
 
     @Override
     public LlmResponse chat(LlmRequest request) {
+        return chat(request, null);
+    }
+
+    @Override
+    public LlmResponse chat(LlmRequest request, LlmCallContext context) {
         String apiKey = aiProperties.getApiKey();
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.AI_SERVICE_ERROR, "AI 服务未配置，请联系管理员");
@@ -50,7 +61,11 @@ public class OpenAiCompatibleClient implements LlmClient {
         }
         String url = baseUrl + "chat/completions";
 
-        log.debug("Calling AI service with model: {}", request.getModel() != null ? request.getModel() : aiProperties.getModelName());
+        String modelName = request.getModel() != null ? request.getModel() : aiProperties.getModelName();
+        log.debug("Calling AI service with model: {}", modelName);
+
+        long startTime = System.currentTimeMillis();
+        ModelUsageLog usageLog = buildUsageLog(context, modelName);
 
         try {
             String requestBody = buildRequestBody(request);
@@ -63,14 +78,50 @@ public class OpenAiCompatibleClient implements LlmClient {
                     .build();
 
             try (Response response = httpClient.newCall(httpRequest).execute()) {
-                return parseResponse(response);
+                LlmResponse llmResponse = parseResponseWithUsage(response, usageLog, startTime);
+                recordUsage(usageLog, true, null);
+                return llmResponse;
             }
         } catch (BusinessException e) {
+            recordUsage(usageLog, false, e.getMessage());
             throw e;
         } catch (IOException e) {
             log.error("AI service call failed: {}", e.getMessage());
+            recordUsage(usageLog, false, e.getMessage());
             throw new BusinessException(ErrorCode.AI_SERVICE_ERROR, "AI 服务调用失败，请稍后重试");
         }
+    }
+
+    private ModelUsageLog buildUsageLog(LlmCallContext context, String modelName) {
+        ModelUsageLog log = new ModelUsageLog();
+        if (context != null) {
+            log.setTaskId(context.getTaskId());
+            log.setFileId(context.getFileId());
+            log.setSkillCode(context.getSkillCode());
+            log.setCallType(context.getCallType());
+        }
+        log.setModelName(modelName);
+        log.setProvider(aiProperties.getBaseUrl() != null ? aiProperties.getBaseUrl() : "deepseek");
+        log.setSuccess(true);
+        log.setCreatedAt(LocalDateTime.now());
+        return log;
+    }
+
+    private void recordUsage(ModelUsageLog usageLog, boolean success, String errorMessage) {
+        try {
+            usageLog.setSuccess(success);
+            usageLog.setErrorMessage(truncateError(errorMessage));
+            modelUsageService.recordUsage(usageLog);
+        } catch (Exception e) {
+            log.warn("[ModelUsage] failed to record usage: {}", e.getMessage());
+        }
+    }
+
+    private String truncateError(String message) {
+        if (message == null) {
+            return null;
+        }
+        return message.length() > 500 ? message.substring(0, 500) : message;
     }
 
     private String buildRequestBody(LlmRequest request) {
@@ -105,7 +156,10 @@ public class OpenAiCompatibleClient implements LlmClient {
         }
     }
 
-    private LlmResponse parseResponse(Response response) throws IOException {
+    private LlmResponse parseResponseWithUsage(Response response, ModelUsageLog usageLog, long startTime) throws IOException {
+        long latencyMs = System.currentTimeMillis() - startTime;
+        usageLog.setLatencyMs(latencyMs);
+
         if (!response.isSuccessful()) {
             log.error("AI service returned error status: {}", response.code());
             throw new BusinessException(ErrorCode.AI_SERVICE_ERROR, "AI 服务调用失败，请稍后重试");
@@ -118,6 +172,21 @@ public class OpenAiCompatibleClient implements LlmClient {
 
         try {
             JsonNode root = objectMapper.readTree(body);
+
+            // Parse usage data
+            JsonNode usage = root.get("usage");
+            if (usage != null) {
+                if (usage.get("prompt_tokens") != null) {
+                    usageLog.setPromptTokens(usage.get("prompt_tokens").asInt());
+                }
+                if (usage.get("completion_tokens") != null) {
+                    usageLog.setCompletionTokens(usage.get("completion_tokens").asInt());
+                }
+                if (usage.get("total_tokens") != null) {
+                    usageLog.setTotalTokens(usage.get("total_tokens").asInt());
+                }
+            }
+
             JsonNode choices = root.get("choices");
             if (choices == null || !choices.isArray() || choices.size() == 0) {
                 throw new BusinessException(ErrorCode.AI_SERVICE_ERROR, "AI 服务返回格式异常");
@@ -131,6 +200,13 @@ public class OpenAiCompatibleClient implements LlmClient {
 
             String content = message.get("content") != null ? message.get("content").asText() : "";
             String finishReason = firstChoice.get("finish_reason") != null ? firstChoice.get("finish_reason").asText() : null;
+
+            // Calculate estimated cost
+            if (usageLog.getTotalTokens() != null && usageLog.getTotalTokens() > 0) {
+                usageLog.setEstimatedCost(BigDecimal.valueOf(usageLog.getTotalTokens())
+                        .multiply(BigDecimal.valueOf(0.27))
+                        .divide(BigDecimal.valueOf(1000), 4, BigDecimal.ROUND_HALF_UP));
+            }
 
             return LlmResponse.builder()
                     .content(content)

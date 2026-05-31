@@ -7,6 +7,8 @@ import lombok.Data;
 @Builder
 public class AiReviewContext {
 
+    private Long taskId;
+    private Long fileId;
     private String prTitle;
     private String prDescription;
     private String prAuthor;

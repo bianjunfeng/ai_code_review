@@ -50,10 +50,10 @@ public class ModelUsageService {
         long totalCalls = logs.size();
         long successCalls = logs.stream().filter(l -> Boolean.TRUE.equals(l.getSuccess())).count();
         long failedCalls = logs.stream().filter(l -> !Boolean.TRUE.equals(l.getSuccess())).count();
-        long totalPromptTokens = logs.stream().mapToLong(l -> defaultLong(l.getPromptTokens())).sum();
-        long totalCompletionTokens = logs.stream().mapToLong(l -> defaultLong(l.getCompletionTokens())).sum();
-        long totalTokens = logs.stream().mapToLong(l -> defaultLong(l.getTotalTokens())).sum();
-        double avgLatencyMs = logs.stream().mapToLong(l -> defaultLong(l.getLatencyMs())).average().orElse(0);
+        long totalPromptTokens = logs.stream().mapToLong(l -> toLong(l.getPromptTokens())).sum();
+        long totalCompletionTokens = logs.stream().mapToLong(l -> toLong(l.getCompletionTokens())).sum();
+        long totalTokens = logs.stream().mapToLong(l -> toLong(l.getTotalTokens())).sum();
+        double avgLatencyMs = logs.stream().mapToLong(l -> toLong(l.getLatencyMs())).average().orElse(0);
         double successRate = totalCalls > 0 ? (double) successCalls / totalCalls * 100 : 100.0;
 
         return ModelUsageSummaryVO.builder()
@@ -121,10 +121,10 @@ public class ModelUsageService {
         long totalCalls = logs.size();
         long successCalls = logs.stream().filter(l -> Boolean.TRUE.equals(l.getSuccess())).count();
         long failedCalls = logs.stream().filter(l -> !Boolean.TRUE.equals(l.getSuccess())).count();
-        long totalPromptTokens = logs.stream().mapToLong(l -> defaultLong(l.getPromptTokens())).sum();
-        long totalCompletionTokens = logs.stream().mapToLong(l -> defaultLong(l.getCompletionTokens())).sum();
-        long totalTokens = logs.stream().mapToLong(l -> defaultLong(l.getTotalTokens())).sum();
-        double avgLatencyMs = logs.stream().mapToLong(l -> defaultLong(l.getLatencyMs())).average().orElse(0);
+        long totalPromptTokens = logs.stream().mapToLong(l -> toLong(l.getPromptTokens())).sum();
+        long totalCompletionTokens = logs.stream().mapToLong(l -> toLong(l.getCompletionTokens())).sum();
+        long totalTokens = logs.stream().mapToLong(l -> toLong(l.getTotalTokens())).sum();
+        double avgLatencyMs = logs.stream().mapToLong(l -> toLong(l.getLatencyMs())).average().orElse(0);
 
         List<ModelUsageDetailVO.ModelUsageLogVO> logVOs = logs.stream()
                 .map(this::toLogVO)
@@ -176,8 +176,8 @@ public class ModelUsageService {
                 .build();
     }
 
-    private Long defaultLong(Long value) {
-        return value == null ? 0L : value;
+    private Long toLong(Number value) {
+        return value == null ? 0L : value.longValue();
     }
 
     private Double calculateCost(long totalTokens) {

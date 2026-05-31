@@ -69,4 +69,3 @@ rate-limit:
     limit: ${RATE_LIMIT_FORCE_REFRESH_LIMIT:1}
     window-seconds: ${RATE_LIMIT_FORCE_REFRESH_WINDOW_SECONDS:300}
 
-logging:

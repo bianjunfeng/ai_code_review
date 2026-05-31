@@ -80,6 +80,8 @@ public class ReviewTaskExecutor {
 
     private AiReviewContext buildContext(ReviewTask task, ReviewFile file) {
         return AiReviewContext.builder()
+                .taskId(task.getId())
+                .fileId(file.getId())
                 .prTitle(task.getPrTitle())
                 .prAuthor(task.getPrAuthor())
                 .sourceBranch(task.getSourceBranch())

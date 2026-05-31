@@ -76,7 +76,13 @@ public class AiReviewService {
                 ))
                 .build();
 
-        LlmResponse llmResponse = llmClient.chat(llmRequest);
+        LlmCallContext callContext = LlmCallContext.builder()
+                .taskId(context.getTaskId())
+                .fileId(context.getFileId())
+                .skillCode(null)
+                .callType("FILE_REVIEW")
+                .build();
+        LlmResponse llmResponse = llmClient.chat(llmRequest, callContext);
 
         String rawOutput = llmResponse.getContent();
         log.info("[AI] 文件分析完成, path={}, responseLength={}", filePath, rawOutput.length());
