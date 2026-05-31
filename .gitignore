@@ -252,4 +252,4 @@ review-result-local.json
 review-report-local.json
 github-pr-cache.json
 
-selfprompt/
+selfprompt/.claude/settings.local.json
