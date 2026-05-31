@@ -27,6 +27,7 @@ CREATE TABLE review_task (
     base_sha VARCHAR(64),
     model_name VARCHAR(100),
     prompt_version VARCHAR(50) DEFAULT 'v1',
+    commit_summary VARCHAR(1000) DEFAULT NULL,
     cached_from_task_id BIGINT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP

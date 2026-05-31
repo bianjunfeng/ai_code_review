@@ -165,7 +165,7 @@ async function handleAnalyze() {
 
 const POLL_INTERVAL_MS = 2000
 const MAX_POLL_COUNT = 90
-const POLLING_STATUSES = ['PENDING', 'FETCHING_PR', 'PARSING_DIFF', 'REVIEWING', 'SUMMARIZING']
+const POLLING_STATUSES = ['PENDING', 'FETCHING_PR', 'PARSING_DIFF', 'REVIEWING', 'SUMMARIZING', 'SCORING']
 
 async function pollReviewTaskStatus(taskId) {
   for (let i = 0; i < MAX_POLL_COUNT; i++) {

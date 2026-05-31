@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS review_task (
                                            pr_author VARCHAR(100) DEFAULT NULL COMMENT 'PR作者',
                                            source_branch VARCHAR(200) DEFAULT NULL COMMENT '源分支',
                                            target_branch VARCHAR(200) DEFAULT NULL COMMENT '目标分支',
-                                           status VARCHAR(30) NOT NULL DEFAULT 'PENDING' COMMENT '任务状态：PENDING/FETCHING_PR/PARSING_DIFF/REVIEWING/SUMMARIZING/SCORING/SUCCESS/FAILED/CANCELLED',
+                                           status VARCHAR(30) NOT NULL DEFAULT 'PENDING' COMMENT '任务状态：PENDING/FETCHING_PR/PARSING_DIFF/REVIEWING/SUMMARIZING/SCORING/SUCCESS/PARTIAL_SUCCESS/FAILED/CANCELLED',
                                            risk_score INT DEFAULT NULL COMMENT '风险评分，范围0到100',
                                            risk_level VARCHAR(20) DEFAULT NULL COMMENT '风险等级：LOW/MEDIUM/HIGH/CRITICAL',
                                            summary TEXT DEFAULT NULL COMMENT 'PR总结',
