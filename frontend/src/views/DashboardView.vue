@@ -130,7 +130,7 @@ import RiskLevelTag from '../components/common/RiskLevelTag.vue'
 import StatTile from '../components/common/StatTile.vue'
 import StatusTag from '../components/common/StatusTag.vue'
 import { createReviewTask } from '../api/review'
-import { buildPrUrl, isValidPrUrl } from '../utils/prUrl'
+import { buildPrUrl, isValidPrUrl, parsePrUrl } from '../utils/prUrl'
 import { loadRecentTasks, saveRecentTask } from '../utils/recentTasks'
 
 const emit = defineEmits(['open-report', 'navigate'])
@@ -208,9 +208,13 @@ async function startFromPull(item) {
     if (!created?.taskId) {
       throw new Error('创建任务失败，未返回 taskId')
     }
+    const parsed = parsePrUrl(prUrl)
     saveRecentTask({
       taskId: created.taskId,
       prUrl,
+      ownerName: parsed?.owner,
+      repoName: parsed?.repo,
+      pullNumber: parsed?.pullNumber,
       status: created.status || 'PENDING',
       cached: created.cached,
       cachedFromTaskId: created.cachedFromTaskId
@@ -237,9 +241,13 @@ async function startManualReview(forceRefresh) {
     if (!created?.taskId) {
       throw new Error('创建任务失败，未返回 taskId')
     }
+    const parsed = parsePrUrl(value)
     saveRecentTask({
       taskId: created.taskId,
       prUrl: value,
+      ownerName: parsed?.owner,
+      repoName: parsed?.repo,
+      pullNumber: parsed?.pullNumber,
       status: created.status || 'PENDING',
       cached: created.cached,
       cachedFromTaskId: created.cachedFromTaskId
