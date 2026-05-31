@@ -58,6 +58,14 @@
             <span v-else class="muted">否</span>
           </template>
         </el-table-column>
+        <el-table-column label="失败原因" min-width="150">
+          <template #default="{ row }">
+            <span v-if="row.status === 'FAILED' && row.errorMessage" class="error-text" :title="row.errorMessage">
+              {{ truncateError(row.errorMessage) }}
+            </span>
+            <span v-else class="muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="模型" min-width="150">
           <template #default="{ row }">
             <span>{{ row.modelName || '-' }}</span>
@@ -147,6 +155,11 @@ function openExternal(url) {
   }
   window.open(url, '_blank', 'noreferrer')
 }
+
+function truncateError(message) {
+  if (!message) return '-'
+  return message.length > 50 ? message.substring(0, 50) + '...' : message
+}
 </script>
 
 <style scoped>
@@ -214,6 +227,15 @@ p {
 .prompt-version {
   color: #69788d;
   font-size: 12px;
+}
+
+.error-text {
+  color: #f56c6c;
+  font-size: 12px;
+}
+
+.muted {
+  color: #c0c4cc;
 }
 
 @media (max-width: 980px) {
