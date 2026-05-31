@@ -17,6 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import com.example.aipr.config.ReviewProperties;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -24,6 +26,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -36,6 +41,7 @@ public class ReviewTaskExecutor {
     private final AiReviewService aiReviewService;
     private final RiskScoreCalculator riskScoreCalculator;
     private final ObjectMapper objectMapper;
+    private final ReviewProperties reviewProperties;
 
     @Async("reviewAsyncExecutor")
     public void executeAsync(Long taskId) {
@@ -56,17 +62,26 @@ public class ReviewTaskExecutor {
             int successCount = 0;
             int failCount = 0;
 
+            int timeoutSeconds = reviewProperties.getAi().getFileReviewTimeoutSeconds();
+
             for (ReviewFile file : files) {
+                AiReviewContext context = buildContext(task, file);
+                CompletableFuture<FileReviewResult> future = CompletableFuture
+                        .supplyAsync(() -> aiReviewService.reviewFile(context))
+                        .orTimeout(timeoutSeconds, TimeUnit.SECONDS);
+
                 try {
-                    FileReviewResult result = aiReviewService.reviewFile(buildContext(task, file));
+                    FileReviewResult result = future.join();
                     saveFileReviewResult(taskId, file, result);
                     aiResults.add(result);
                     successCount++;
-                    log.debug("[Executor] taskId={}, 文件分析完成, file={}, commentCount={}", taskId, file.getFilePath(), result.getComments() != null ? result.getComments().size() : 0);
-                } catch (Exception e) {
+                    log.debug("[Executor] taskId={}, 文件分析完成, file={}, commentCount={}", taskId, file.getFilePath(),
+                            result.getComments() != null ? result.getComments().size() : 0);
+                } catch (CompletionException e) {
                     failCount++;
-                    log.warn("[Executor] taskId={}, 文件分析失败, file={}, error={}", taskId, file.getFilePath(), e.getMessage());
-                    markFileFailed(taskId, file, e.getMessage());
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    log.warn("[Executor] taskId={}, 文件分析失败或超时, file={}, error={}", taskId, file.getFilePath(), cause.getMessage());
+                    markFileFailed(taskId, file, "超时或异常：" + cause.getMessage());
                 }
             }
 

@@ -1,0 +1,21 @@
+package com.example.aipr.config;
+
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+@Data
+@Component
+@ConfigurationProperties(prefix = "review")
+public class ReviewProperties {
+
+    private Ai ai = new Ai();
+
+    @Data
+    public static class Ai {
+        /** 文件级并发数，默认 3 */
+        private int fileReviewConcurrency = 3;
+        /** 单文件 AI 分析超时秒数，默认 60 */
+        private int fileReviewTimeoutSeconds = 60;
+    }
+}
