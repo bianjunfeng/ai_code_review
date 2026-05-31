@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -71,26 +70,26 @@ public class ReviewTaskExecutor {
             List<CompletableFuture<Void>> futures = new ArrayList<>();
             for (ReviewFile file : files) {
                 futures.add(CompletableFuture
-                        .runAsync(() -> {
+                        .supplyAsync(() -> {
                             AiReviewContext context = buildContext(task, file);
-                            try {
-                                FileReviewResult result = CompletableFuture
-                                        .supplyAsync(() -> aiReviewService.reviewFile(context))
-                                        .orTimeout(timeoutSeconds, TimeUnit.SECONDS)
-                                        .join();
-                                saveFileReviewResult(taskId, file, result);
-                                aiResults.add(result);
-                                successCount.incrementAndGet();
-                                log.debug("[Executor] taskId={}, 文件分析完成, file={}, commentCount={}", taskId, file.getFilePath(),
-                                        result.getComments() != null ? result.getComments().size() : 0);
-                            } catch (CompletionException e) {
-                                failCount.incrementAndGet();
-                                Throwable cause = e.getCause() != null ? e.getCause() : e;
-                                log.warn("[Executor] taskId={}, 文件分析失败或超时, file={}, error={}", taskId, file.getFilePath(),
-                                        cause.getMessage());
-                                markFileFailed(taskId, file, "超时或异常：" + cause.getMessage());
-                            }
-                        }, fileReviewExecutor));
+                            return aiReviewService.reviewFile(context);
+                        }, fileReviewExecutor)
+                        .orTimeout(timeoutSeconds, TimeUnit.SECONDS)
+                        .thenAccept(result -> {
+                            saveFileReviewResult(taskId, file, result);
+                            aiResults.add(result);
+                            successCount.incrementAndGet();
+                            log.debug("[Executor] taskId={}, 文件分析完成, file={}, commentCount={}", taskId, file.getFilePath(),
+                                    result.getComments() != null ? result.getComments().size() : 0);
+                        })
+                        .exceptionally(ex -> {
+                            failCount.incrementAndGet();
+                            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                            log.warn("[Executor] taskId={}, 文件分析失败或超时, file={}, error={}", taskId, file.getFilePath(),
+                                    cause.getMessage());
+                            markFileFailed(taskId, file, "超时或异常：" + cause.getMessage());
+                            return null;
+                        }));
             }
 
             // 等待全部文件完成
