@@ -168,6 +168,7 @@ import { ElMessage } from 'element-plus'
 import { Box, CircleCheck, Clock, Coin, Connection, DataAnalysis, Filter, Link, Refresh, Search, Tickets, Warning } from '@element-plus/icons-vue'
 import { listPullRequests } from '../api/github'
 import { getConfigStatus } from '../api/config'
+import { getReviewTaskStatistics, getRecentFailures } from '../api/review'
 import RiskLevelTag from '../components/common/RiskLevelTag.vue'
 import StatTile from '../components/common/StatTile.vue'
 import StatusTag from '../components/common/StatusTag.vue'
@@ -178,6 +179,8 @@ import { loadRecentTasks, saveRecentTask } from '../utils/recentTasks'
 const emit = defineEmits(['open-report', 'navigate'])
 
 const configStatus = ref(null)
+const backendStats = ref(null)
+const recentFailures = ref([])
 
 const stateOptions = [
   { label: 'Open', value: 'open' },
@@ -199,6 +202,16 @@ const manualLoading = ref(false)
 const runningPrUrl = ref('')
 
 const stats = computed(() => {
+  // Prefer backend statistics when available
+  if (backendStats.value) {
+    return {
+      total: backendStats.value.totalTasks || 0,
+      success: backendStats.value.successTasks || 0,
+      highRisk: (backendStats.value.highRiskTasks || 0) + (backendStats.value.criticalRiskTasks || 0),
+      cached: backendStats.value.cacheHits || 0
+    }
+  }
+  // Fallback to local storage
   const tasks = recentTasks.value
   return {
     total: tasks.length,
@@ -211,6 +224,7 @@ const stats = computed(() => {
 onMounted(() => {
   recentTasks.value = loadRecentTasks()
   loadConfigStatus()
+  loadBackendStats()
 })
 
 async function loadConfigStatus() {
@@ -218,6 +232,16 @@ async function loadConfigStatus() {
     configStatus.value = await getConfigStatus()
   } catch (e) {
     console.warn('Failed to load config status:', e)
+  }
+}
+
+async function loadBackendStats() {
+  try {
+    backendStats.value = await getReviewTaskStatistics()
+    const failuresData = await getRecentFailures({ page: 1, pageSize: 3 })
+    recentFailures.value = failuresData?.records || []
+  } catch (e) {
+    console.warn('Failed to load backend stats:', e)
   }
 }
 

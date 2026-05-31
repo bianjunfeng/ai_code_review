@@ -101,3 +101,13 @@ export async function getTaskModelUsage(taskId) {
   const response = await http.get(`/api/model-usage/tasks/${taskId}`)
   return unwrapResult(response.data)
 }
+
+export async function getReviewTaskStatistics() {
+  const response = await http.get('/api/review-tasks/statistics')
+  return unwrapResult(response.data)
+}
+
+export async function getRecentFailures(params = {}) {
+  const response = await http.get('/api/review-tasks/recent-failures', { params })
+  return unwrapResult(response.data)
+}
