@@ -88,3 +88,37 @@ CREATE TABLE IF NOT EXISTS review_skill (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     UNIQUE KEY uk_skill_code (skill_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Review Skill配置表';
+
+
+-- auto-generated definition
+create table model_usage_log
+(
+    id                bigint auto_increment comment '主键ID'
+        primary key,
+    task_id           bigint                             null comment '关联review_task.id',
+    file_id           bigint                             null comment '关联review_file.id',
+    skill_code        varchar(100)                       null comment '技能编码',
+    provider          varchar(200)                       null comment 'AI供应商',
+    model_name        varchar(100)                       null comment '模型名称',
+    call_type         varchar(50)                        null comment '调用类型',
+    prompt_tokens     int      default 0                 not null comment '输入token数',
+    completion_tokens int      default 0                 not null comment '输出token数',
+    total_tokens      int      default 0                 not null comment '总token数',
+    latency_ms        bigint                             null comment '延迟毫秒',
+    success           tinyint  default 1                 not null comment '是否成功：0否，1是',
+    error_message     text                               null comment '错误信息',
+    estimated_cost    decimal(10, 4)                     null comment '预估费用',
+    request_id        varchar(100)                       null comment '请求ID',
+    created_at        datetime default CURRENT_TIMESTAMP not null comment '创建时间'
+)
+    comment 'AI模型调用日志表';
+
+create index idx_created_at
+    on model_usage_log (created_at);
+
+create index idx_success
+    on model_usage_log (success);
+
+create index idx_task_id
+    on model_usage_log (task_id);
+

@@ -103,3 +103,26 @@ CREATE TABLE review_skill_result (
 
 CREATE INDEX idx_review_skill_result_task_id ON review_skill_result (task_id);
 CREATE INDEX idx_review_skill_result_skill_name ON review_skill_result (skill_name);
+
+CREATE TABLE model_usage_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    task_id BIGINT,
+    file_id BIGINT,
+    skill_code VARCHAR(100),
+    provider VARCHAR(200),
+    model_name VARCHAR(100),
+    call_type VARCHAR(50),
+    prompt_tokens INT NOT NULL DEFAULT 0,
+    completion_tokens INT NOT NULL DEFAULT 0,
+    total_tokens INT NOT NULL DEFAULT 0,
+    latency_ms BIGINT,
+    success TINYINT NOT NULL DEFAULT 1,
+    error_message TEXT,
+    estimated_cost DECIMAL(10,4),
+    request_id VARCHAR(100),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_model_usage_log_task_id ON model_usage_log (task_id);
+CREATE INDEX idx_model_usage_log_created_at ON model_usage_log (created_at);
+CREATE INDEX idx_model_usage_log_success ON model_usage_log (success);
