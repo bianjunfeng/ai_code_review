@@ -241,7 +241,60 @@ public class ReviewTaskService {
         reviewTaskMapper.updateById(update);
     }
 
+    // ── P0：状态 → 中文阶段描述 ──
+    private static final String STAGE_PENDING = "创建任务";
+    private static final String STAGE_FETCHING_PR = "获取 PR 信息";
+    private static final String STAGE_PARSING_DIFF = "解析 Diff";
+    private static final String STAGE_REVIEWING = "执行 AI Review";
+    private static final String STAGE_SUMMARIZING = "生成报告";
+    private static final String STAGE_SCORING = "计算风险评分";
+    private static final String STAGE_SUCCESS = "完成";
+    private static final String STAGE_FAILED = "失败";
+    private static final String STAGE_CANCELLED = "已取消";
+    private static final String STAGE_UNKNOWN = "未知";
+
+    private String toCurrentStep(String status) {
+        if (status == null) return STAGE_UNKNOWN;
+        return switch (status.toUpperCase()) {
+            case "PENDING" -> STAGE_PENDING;
+            case "FETCHING_PR" -> STAGE_FETCHING_PR;
+            case "PARSING_DIFF" -> STAGE_PARSING_DIFF;
+            case "REVIEWING" -> STAGE_REVIEWING;
+            case "SUMMARIZING" -> STAGE_SUMMARIZING;
+            case "SCORING" -> STAGE_SCORING;
+            case "SUCCESS" -> STAGE_SUCCESS;
+            case "FAILED" -> STAGE_FAILED;
+            case "CANCELLED" -> STAGE_CANCELLED;
+            default -> STAGE_UNKNOWN;
+        };
+    }
+
+    private boolean isTerminal(String status) {
+        if (status == null) return false;
+        return switch (status.toUpperCase()) {
+            case "SUCCESS", "FAILED", "CANCELLED" -> true;
+            default -> false;
+        };
+    }
+
     private ReviewTaskDetailVO toTaskDetailVO(ReviewTask task) {
+        // 统计文件数量，计算进度
+        java.util.List<ReviewFile> allFiles = reviewFileMapper.findByTaskId(task.getId());
+        int total = allFiles.size();
+        long skipped = allFiles.stream().filter(f -> Boolean.TRUE.equals(f.getSkipped())).count();
+        long analyzed = allFiles.stream()
+                .filter(f -> !Boolean.TRUE.equals(f.getSkipped()))
+                .filter(f -> f.getAiSummary() != null && !f.getAiSummary().isBlank())
+                .count();
+        long failed = allFiles.stream()
+                .filter(f -> !Boolean.TRUE.equals(f.getSkipped()))
+                .filter(f -> f.getAiSummary() != null && f.getAiSummary().startsWith("[分析失败]"))
+                .count();
+        int active = (int) (total - skipped);
+        int pct = active > 0
+                ? Math.min(100, (int) (analyzed * 100 / active))
+                : (isTerminal(task.getStatus()) ? 100 : 0);
+
         return ReviewTaskDetailVO.builder()
                 .taskId(task.getId())
                 .prUrl(task.getPrUrl())
@@ -255,6 +308,18 @@ public class ReviewTaskService {
                 .errorMessage(task.getErrorMessage())
                 .createdAt(formatTime(task.getCreatedAt()))
                 .updatedAt(formatTime(task.getUpdatedAt()))
+                // ── P0 进度 ──
+                .progressPercent(pct)
+                .currentStep(toCurrentStep(task.getStatus()))
+                .totalFileCount(total)
+                .analyzedFileCount((int) analyzed)
+                .skippedFileCount((int) skipped)
+                .failedFileCount((int) failed)
+                // ── 缓存/模型 ──
+                .cached(task.getCachedFromTaskId() != null)
+                .cachedFromTaskId(task.getCachedFromTaskId())
+                .modelName(task.getModelName())
+                .promptVersion(task.getPromptVersion())
                 .build();
     }
 
