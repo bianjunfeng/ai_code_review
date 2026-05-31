@@ -3,7 +3,7 @@
     <section class="toolbar-panel">
       <div class="toolbar-title">
         <h2>选择 PR 后启动评审</h2>
-        <p>该页用于替代“手动找链接”的使用方式，后端 PR 列表接口接好后即可直接选择。</p>
+        <p>选择仓库后获取 PR 列表，直接点击启动评审。</p>
       </div>
 
       <div class="toolbar-grid">
