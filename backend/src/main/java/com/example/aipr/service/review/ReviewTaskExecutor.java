@@ -20,10 +20,14 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
@@ -36,6 +40,8 @@ public class ReviewTaskExecutor {
     private final AiReviewService aiReviewService;
     private final RiskScoreCalculator riskScoreCalculator;
     private final ObjectMapper objectMapper;
+    @org.springframework.beans.factory.annotation.Qualifier("fileReviewExecutor")
+    private final Executor fileReviewExecutor;
 
     @Async("reviewAsyncExecutor")
     public void executeAsync(Long taskId) {
@@ -52,25 +58,35 @@ public class ReviewTaskExecutor {
             List<ReviewFile> files = reviewFileMapper.findActiveByTaskId(taskId);
             log.info("[Executor] taskId={}, 待分析文件数={}", taskId, files.size());
 
-            List<FileReviewResult> aiResults = new ArrayList<>();
-            int successCount = 0;
-            int failCount = 0;
+            // ── P1：文件级并发评审，使用线程安全的收集器 ──
+            List<FileReviewResult> aiResults = Collections.synchronizedList(new ArrayList<>());
+            AtomicInteger successCount = new AtomicInteger(0);
+            AtomicInteger failCount = new AtomicInteger(0);
 
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
             for (ReviewFile file : files) {
-                try {
-                    FileReviewResult result = aiReviewService.reviewFile(buildContext(task, file));
-                    saveFileReviewResult(taskId, file, result);
-                    aiResults.add(result);
-                    successCount++;
-                    log.debug("[Executor] taskId={}, 文件分析完成, file={}, commentCount={}", taskId, file.getFilePath(), result.getComments() != null ? result.getComments().size() : 0);
-                } catch (Exception e) {
-                    failCount++;
-                    log.warn("[Executor] taskId={}, 文件分析失败, file={}, error={}", taskId, file.getFilePath(), e.getMessage());
-                    markFileFailed(taskId, file, e.getMessage());
-                }
+                futures.add(CompletableFuture.runAsync(() -> {
+                    try {
+                        FileReviewResult result = aiReviewService.reviewFile(buildContext(task, file));
+                        saveFileReviewResult(taskId, file, result);
+                        aiResults.add(result);
+                        successCount.incrementAndGet();
+                        log.debug("[Executor] taskId={}, 文件分析完成, file={}, commentCount={}", taskId, file.getFilePath(),
+                                result.getComments() != null ? result.getComments().size() : 0);
+                    } catch (Exception e) {
+                        failCount.incrementAndGet();
+                        log.warn("[Executor] taskId={}, 文件分析失败, file={}, error={}", taskId, file.getFilePath(), e.getMessage());
+                        markFileFailed(taskId, file, e.getMessage());
+                    }
+                }, fileReviewExecutor));
             }
 
-            log.info("[Executor] taskId={}, AI Review 完成, success={}, fail={}", taskId, successCount, failCount);
+            // 等待全部文件完成
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+            int success = successCount.get();
+            int fail = failCount.get();
+            log.info("[Executor] taskId={}, AI Review 完成, success={}, fail={}", taskId, success, fail);
             updateStatus(taskId, ReviewTaskStatus.SUMMARIZING, null);
             finishTask(taskId, aiResults);
         } catch (Exception e) {
