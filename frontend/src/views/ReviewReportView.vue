@@ -28,6 +28,36 @@
       :title="task.errorMessage || '任务执行失败'"
     />
 
+    <!-- P0 缓存命中提示 -->
+    <el-alert
+      v-if="task?.cached"
+      type="success"
+      show-icon
+      :closable="false"
+      title="已命中历史报告，无需重新 AI 分析。"
+    />
+
+    <!-- P0 进度横幅：非终态时展示轮询进度 -->
+    <div v-if="isPollingStatus(task?.status)" class="progress-banner">
+      <div class="progress-top">
+        <el-icon class="is-loading"><Loading /></el-icon>
+        <span class="progress-stage">{{ task?.currentStep || '处理中...' }}</span>
+        <span class="progress-text">
+          已分析 {{ task?.analyzedFileCount ?? 0 }} / {{ (task?.totalFileCount ?? 0) - (task?.skippedFileCount ?? 0) }} 个文件
+          <template v-if="task?.skippedFileCount">（跳过 {{ task.skippedFileCount }} 个）</template>
+          <template v-if="task?.failedFileCount">（失败 {{ task.failedFileCount }} 个）</template>
+        </span>
+      </div>
+      <el-progress
+        :percentage="task?.progressPercent ?? 0"
+        :stroke-width="6"
+        :show-text="true"
+      />
+      <p class="progress-hint">
+        当前 PR 文件较多，AI Review 仍在执行。可以离开页面，稍后从任务中心查看结果。
+      </p>
+    </div>
+
     <section v-loading="loading" class="report-body">
       <el-empty v-if="!taskId" description="请选择一个任务查看报告" />
       <el-tabs v-else v-model="activeTab">
@@ -132,9 +162,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, CopyDocument, Link, Refresh } from '@element-plus/icons-vue'
+import { ArrowLeft, CopyDocument, Link, Loading, Refresh } from '@element-plus/icons-vue'
 import { getReviewComments, getReviewFiles, getReviewMarkdown, getReviewReport, getReviewTask, getTaskModelUsage } from '../api/review'
 import FinalReviewCard from '../components/FinalReviewCard.vue'
 import PrInfoCard from '../components/PrInfoCard.vue'
@@ -164,6 +194,62 @@ const comments = ref([])
 const activeTab = ref('overview')
 const riskFilter = ref('')
 const modelUsage = ref(null)
+
+// ── P0 轮询：每隔 2s 查询任务进度，非终态自动更新 ──
+const POLL_INTERVAL_MS = 2000
+const POLLING_STATUSES = ['PENDING', 'FETCHING_PR', 'PARSING_DIFF', 'REVIEWING', 'SUMMARIZING', 'SCORING']
+let pollTimer = null
+
+function isPollingStatus(status) {
+  if (!status) return false
+  return POLLING_STATUSES.includes(String(status).toUpperCase())
+}
+
+function startPolling() {
+  stopPolling()
+  pollTimer = window.setInterval(async () => {
+    if (!props.taskId) {
+      stopPolling()
+      return
+    }
+    try {
+      const t = await getReviewTask(props.taskId)
+      if (!t) return
+      task.value = { ...task.value, ...t }
+      if (!isPollingStatus(t.status)) {
+        stopPolling()
+        if (String(t.status).toUpperCase() === 'SUCCESS') {
+          await loadReportData()
+        }
+      }
+    } catch {
+      // 轮询期间忽略网络错误
+    }
+  }, POLL_INTERVAL_MS)
+}
+
+function stopPolling() {
+  if (pollTimer != null) {
+    window.clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+async function loadReportData() {
+  if (!props.taskId) return
+  try {
+    files.value = await getReviewFiles(props.taskId).catch(() => [])
+    comments.value = await getReviewComments(props.taskId).catch(() => [])
+    report.value = await getReviewReport(props.taskId).catch(() => null)
+    modelUsage.value = await getTaskModelUsage(props.taskId).catch(() => null)
+  } catch {
+    // loadReport 统一处理错误
+  }
+}
+
+onBeforeUnmount(() => {
+  stopPolling()
+})
 
 const prUrl = computed(() => report.value?.prInfo?.url || task.value?.prUrl || '')
 
@@ -256,9 +342,15 @@ async function loadReport() {
   loading.value = true
   try {
     task.value = await getReviewTask(props.taskId)
-    files.value = await getReviewFiles(props.taskId).catch(() => [])
-    comments.value = await getReviewComments(props.taskId).catch(() => [])
-    report.value = await getReviewReport(props.taskId).catch(() => null)
+    // ── P0：非终态则启动轮询，不阻塞页面 ──
+    if (isPollingStatus(task.value?.status)) {
+      startPolling()
+      loading.value = false
+      return
+    }
+
+    stopPolling()
+    await loadReportData()
     modelUsage.value = await getTaskModelUsage(props.taskId).catch(() => null)
 
     saveRecentTask({
@@ -318,6 +410,38 @@ function openExternal(url) {
 .report-view {
   display: grid;
   gap: 16px;
+}
+
+.progress-banner {
+  padding: 18px;
+  background: #f0f5ff;
+  border: 1px solid #c9d9f2;
+  border-radius: 8px;
+}
+
+.progress-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.progress-stage {
+  color: #1f63d8;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.progress-text {
+  color: #68778c;
+  font-size: 13px;
+  margin-left: auto;
+}
+
+.progress-hint {
+  margin: 10px 0 0;
+  color: #8492a6;
+  font-size: 12px;
 }
 
 .report-header,
