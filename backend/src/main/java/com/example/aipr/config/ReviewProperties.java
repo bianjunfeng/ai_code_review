@@ -20,7 +20,7 @@ public class ReviewProperties {
     public static class Ai {
         /** 文件级并发数，默认 3 */
         private int fileReviewConcurrency = 3;
-        /** 单文件超时秒数，预留 */
+        /** 单文件 AI 分析超时秒数，默认 60 */
         private int fileReviewTimeoutSeconds = 60;
     }
 }

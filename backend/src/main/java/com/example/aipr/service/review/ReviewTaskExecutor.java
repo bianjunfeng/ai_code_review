@@ -1,5 +1,6 @@
 package com.example.aipr.service.review;
 
+import com.example.aipr.config.ReviewProperties;
 import com.example.aipr.entity.ReviewComment;
 import com.example.aipr.entity.ReviewFile;
 import com.example.aipr.entity.ReviewTask;
@@ -26,7 +27,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
@@ -40,6 +43,7 @@ public class ReviewTaskExecutor {
     private final AiReviewService aiReviewService;
     private final RiskScoreCalculator riskScoreCalculator;
     private final ObjectMapper objectMapper;
+    private final ReviewProperties reviewProperties;
     @org.springframework.beans.factory.annotation.Qualifier("fileReviewExecutor")
     private final Executor fileReviewExecutor;
 
@@ -58,27 +62,35 @@ public class ReviewTaskExecutor {
             List<ReviewFile> files = reviewFileMapper.findActiveByTaskId(taskId);
             log.info("[Executor] taskId={}, 待分析文件数={}", taskId, files.size());
 
-            // ── P1：文件级并发评审，使用线程安全的收集器 ──
+            // ── P1：文件级并发评审 + 单文件超时控制 ──
+            int timeoutSeconds = reviewProperties.getAi().getFileReviewTimeoutSeconds();
             List<FileReviewResult> aiResults = Collections.synchronizedList(new ArrayList<>());
             AtomicInteger successCount = new AtomicInteger(0);
             AtomicInteger failCount = new AtomicInteger(0);
 
             List<CompletableFuture<Void>> futures = new ArrayList<>();
             for (ReviewFile file : files) {
-                futures.add(CompletableFuture.runAsync(() -> {
-                    try {
-                        FileReviewResult result = aiReviewService.reviewFile(buildContext(task, file));
-                        saveFileReviewResult(taskId, file, result);
-                        aiResults.add(result);
-                        successCount.incrementAndGet();
-                        log.debug("[Executor] taskId={}, 文件分析完成, file={}, commentCount={}", taskId, file.getFilePath(),
-                                result.getComments() != null ? result.getComments().size() : 0);
-                    } catch (Exception e) {
-                        failCount.incrementAndGet();
-                        log.warn("[Executor] taskId={}, 文件分析失败, file={}, error={}", taskId, file.getFilePath(), e.getMessage());
-                        markFileFailed(taskId, file, e.getMessage());
-                    }
-                }, fileReviewExecutor));
+                futures.add(CompletableFuture
+                        .runAsync(() -> {
+                            AiReviewContext context = buildContext(task, file);
+                            try {
+                                FileReviewResult result = CompletableFuture
+                                        .supplyAsync(() -> aiReviewService.reviewFile(context))
+                                        .orTimeout(timeoutSeconds, TimeUnit.SECONDS)
+                                        .join();
+                                saveFileReviewResult(taskId, file, result);
+                                aiResults.add(result);
+                                successCount.incrementAndGet();
+                                log.debug("[Executor] taskId={}, 文件分析完成, file={}, commentCount={}", taskId, file.getFilePath(),
+                                        result.getComments() != null ? result.getComments().size() : 0);
+                            } catch (CompletionException e) {
+                                failCount.incrementAndGet();
+                                Throwable cause = e.getCause() != null ? e.getCause() : e;
+                                log.warn("[Executor] taskId={}, 文件分析失败或超时, file={}, error={}", taskId, file.getFilePath(),
+                                        cause.getMessage());
+                                markFileFailed(taskId, file, "超时或异常：" + cause.getMessage());
+                            }
+                        }, fileReviewExecutor));
             }
 
             // 等待全部文件完成
