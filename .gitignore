@@ -252,4 +252,5 @@ review-result-local.json
 review-report-local.json
 github-pr-cache.json
 
-selfprompt/.claude/settings.local.json
+selfprompt/
+/backend/src/main/resources/application.yml

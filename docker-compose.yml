@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -7,46 +5,83 @@ services:
       dockerfile: Dockerfile
     image: ai-pr-review:${VERSION:-latest}
     container_name: ai-pr-review
-    ports:
-      - "80:80"
-    environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - DB_URL=jdbc:mysql://mysql:3306/ai_code_review
-      - DB_USERNAME=${DB_USERNAME:-ai_review_user}
-      - DB_PASSWORD=${DB_PASSWORD:-}
-      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
-      - GITHUB_API_BASE_URL=${GITHUB_API_BASE_URL:-https://api.github.com}
-      - GITHUB_CONNECT_TIMEOUT_SECONDS=10
-      - GITHUB_READ_TIMEOUT_SECONDS=30
-      - AI_BASE_URL=${AI_BASE_URL:-https://api.deepseek.com}
-      - AI_API_KEY=${AI_API_KEY:-}
-      - AI_MODEL_NAME=${AI_MODEL_NAME:-deepseek-chat}
-      - AI_TEMPERATURE=0.2
-      - AI_MAX_TOKENS=3000
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-80}:80"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_URL: "jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-ai_code_review}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true"
+      DB_USERNAME: ${MYSQL_USERNAME:-ai_review_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-ai_review_password}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL_NAME: ${AI_MODEL_NAME:-deepseek-chat}
+      AI_TEMPERATURE: ${AI_TEMPERATURE:-0.2}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
   mysql:
     image: mysql:8.0
     container_name: ai-pr-review-mysql
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        grep -v -x 'schema.sql' /schema/schema.sql > /docker-entrypoint-initdb.d/01-schema.sql
+        exec /usr/local/bin/docker-entrypoint.sh mysqld \
+          --default-authentication-plugin=mysql_native_password \
+          --character-set-server=utf8mb4 \
+          --collation-server=utf8mb4_unicode_ci
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpass}
-      - MYSQL_DATABASE=ai_code_review
-      - MYSQL_USER=${DB_USERNAME:-ai_review_user}
-      - MYSQL_PASSWORD=${DB_PASSWORD:-}
-    ports:
-      - "3306:3306"
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ai_review_root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ai_code_review}
+      MYSQL_USER: ${MYSQL_USERNAME:-ai_review_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ai_review_password}
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./docs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./backend/src/main/resources/db/schema.sql:/schema/schema.sql:ro
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-pr-review-redis
+    command: >
+      sh -c 'if [ -n "$${REDIS_PASSWORD}" ]; then
+      redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}";
+      else
+      redis-server --appendonly yes;
+      fi'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    volumes:
+      - redis_data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "if [ -n \"$${REDIS_PASSWORD}\" ]; then redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG; else redis-cli ping | grep PONG; fi"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 volumes:
   mysql_data:
+  redis_data:

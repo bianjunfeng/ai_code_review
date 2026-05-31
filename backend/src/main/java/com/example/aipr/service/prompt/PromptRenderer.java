@@ -162,4 +162,74 @@ public class PromptRenderer {
         }
         return "";
     }
+
+    /**
+     * 渲染 PR 级别总结 Prompt。
+     * 输入：PR 信息、文件 summary 列表、风险列表、跳过/失败/截断统计。
+     */
+    public String renderPrSummaryPrompt(String prTitle, String prAuthor, String sourceBranch,
+                                        String targetBranch, String commitSummary,
+                                        List<String> fileSummaries,
+                                        int analyzedCount, int skippedCount,
+                                        int failedCount, int truncatedCount,
+                                        int criticalCount, int highCount,
+                                        int mediumCount, int lowCount) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("你是一个专业的代码评审助手。请基于以下 PR 上下文和文件级评审结果，生成 PR 总体总结、最终评审结论和测试建议。\n\n");
+
+        if (prTitle != null && !prTitle.isEmpty()) {
+            prompt.append("PR 标题：").append(prTitle).append("\n");
+        }
+        if (prAuthor != null && !prAuthor.isEmpty()) {
+            prompt.append("PR 作者：").append(prAuthor).append("\n");
+        }
+        prompt.append("源分支：").append(sourceBranch != null ? sourceBranch : "未指定").append("\n");
+        prompt.append("目标分支：").append(targetBranch != null ? targetBranch : "未指定").append("\n");
+        if (commitSummary != null && !commitSummary.isBlank()) {
+            prompt.append("PR 提交记录：").append(commitSummary).append("\n");
+        }
+
+        prompt.append("\n=== 文件级评审结果 ===\n");
+        if (fileSummaries != null && !fileSummaries.isEmpty()) {
+            for (int i = 0; i < fileSummaries.size(); i++) {
+                prompt.append(i + 1).append(". ").append(fileSummaries.get(i)).append("\n");
+            }
+        } else {
+            prompt.append("（无文件级总结）\n");
+        }
+
+        prompt.append("\n=== 评审统计 ===\n");
+        prompt.append("已分析文件数：").append(analyzedCount).append("\n");
+        if (skippedCount > 0) {
+            prompt.append("跳过文件数：").append(skippedCount).append("\n");
+        }
+        if (failedCount > 0) {
+            prompt.append("失败文件数：").append(failedCount).append("\n");
+        }
+        if (truncatedCount > 0) {
+            prompt.append("截断文件数：").append(truncatedCount).append("\n");
+        }
+
+        prompt.append("\n=== 风险统计 ===\n");
+        prompt.append("CRITICAL：").append(criticalCount).append(" 个\n");
+        prompt.append("HIGH：").append(highCount).append(" 个\n");
+        prompt.append("MEDIUM：").append(mediumCount).append(" 个\n");
+        prompt.append("LOW：").append(lowCount).append(" 个\n");
+
+        prompt.append("\n请基于以上信息生成 JSON，只输出合法 JSON，不要输出 Markdown 或其他内容。\n");
+        prompt.append("输出格式：\n");
+        prompt.append("{\n");
+        prompt.append("  \"summary\": \"PR 总体变更摘要，1-3 句话概括本次 PR 主要目的和影响\",\n");
+        prompt.append("  \"finalReview\": \"最终评审结论，结合风险等级和统计给出明确合并建议\",\n");
+        prompt.append("  \"testSuggestions\": [\"测试建议1\", \"测试建议2\"]\n");
+        prompt.append("}\n\n");
+        prompt.append("要求：\n");
+        prompt.append("1. summary 要基于文件级评审结果和 PR 信息，不要编造未提供的内容。\n");
+        prompt.append("2. finalReview 要结合风险统计，高风险时建议修改后再合并。\n");
+        prompt.append("3. testSuggestions 最多 5 条，结合变更内容和缺失测试给出建议。\n");
+        prompt.append("4. 如果 CRITICAL 或 HIGH 风险较多，finalReview 应为 REQUEST_CHANGES 类型结论。\n");
+        prompt.append("5. 只输出合法 JSON，不要输出 Markdown 代码块。\n");
+
+        return prompt.toString();
+    }
 }
