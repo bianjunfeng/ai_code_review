@@ -127,31 +127,31 @@
           <div v-if="modelUsage" class="usage-grid">
             <div class="usage-card">
               <div class="usage-label">调用次数</div>
-              <div class="usage-value">{{ modelUsage.totalCalls }}</div>
+              <div class="usage-value">{{ formatInteger(modelUsage.totalCalls) }}</div>
             </div>
             <div class="usage-card success">
               <div class="usage-label">成功</div>
-              <div class="usage-value">{{ modelUsage.successCalls }}</div>
+              <div class="usage-value">{{ formatInteger(modelUsage.successCalls) }}</div>
             </div>
             <div class="usage-card danger">
               <div class="usage-label">失败</div>
-              <div class="usage-value">{{ modelUsage.failedCalls }}</div>
+              <div class="usage-value">{{ formatInteger(modelUsage.failedCalls) }}</div>
             </div>
             <div class="usage-card">
               <div class="usage-label">Prompt Tokens</div>
-              <div class="usage-value">{{ modelUsage.totalPromptTokens }}</div>
+              <div class="usage-value">{{ formatInteger(modelUsage.totalPromptTokens) }}</div>
             </div>
             <div class="usage-card">
               <div class="usage-label">Completion Tokens</div>
-              <div class="usage-value">{{ modelUsage.totalCompletionTokens }}</div>
+              <div class="usage-value">{{ formatInteger(modelUsage.totalCompletionTokens) }}</div>
             </div>
             <div class="usage-card">
               <div class="usage-label">总 Tokens</div>
-              <div class="usage-value">{{ modelUsage.totalTokens }}</div>
+              <div class="usage-value">{{ formatInteger(modelUsage.totalTokens) }}</div>
             </div>
             <div class="usage-card">
               <div class="usage-label">平均延迟</div>
-              <div class="usage-value">{{ modelUsage.avgLatencyMs }}ms</div>
+              <div class="usage-value">{{ formatFixed(modelUsage.avgLatencyMs, 2) }}ms</div>
             </div>
           </div>
           <el-empty v-else description="暂无模型用量数据" />
@@ -174,6 +174,7 @@ import SummaryCard from '../components/SummaryCard.vue'
 import TestSuggestionCard from '../components/TestSuggestionCard.vue'
 import RiskLevelTag from '../components/common/RiskLevelTag.vue'
 import StatusTag from '../components/common/StatusTag.vue'
+import { formatFixed, formatInteger } from '../utils/numberFormat'
 import { buildReviewMarkdown } from '../utils/reviewMarkdown'
 import { saveRecentTask } from '../utils/recentTasks'
 
