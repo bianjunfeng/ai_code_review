@@ -1,11 +1,11 @@
-import { createReviewTask, getReviewTask } from '../api/review'
+import { createReviewTask } from '../api/review'
 import { parsePrUrl } from './prUrl'
 import { saveRecentTask } from './recentTasks'
 
-const POLL_INTERVAL_MS = 2000
-const MAX_POLL_COUNT = 90
-const POLLING_STATUSES = ['PENDING', 'FETCHING_PR', 'PARSING_DIFF', 'REVIEWING', 'SUMMARIZING', 'SCORING']
-
+/**
+ * P0 优化：创建任务后立即返回 taskId，不再阻塞等待任务完成。
+ * 轮询逻辑已移入 ReviewReportView，页面自行处理状态更新与报告加载。
+ */
 export async function startReviewTask(prUrl, options = {}) {
   const parsed = parsePrUrl(prUrl)
   const created = await createReviewTask(prUrl, Boolean(options.forceRefresh))
@@ -25,38 +25,8 @@ export async function startReviewTask(prUrl, options = {}) {
     cachedFromTaskId: created.cachedFromTaskId
   })
 
-  if (created.cached || created.status === 'SUCCESS') {
-    return {
-      created,
-      finalStatus: created.status || 'SUCCESS',
-      task: null
-    }
-  }
-
-  const task = await pollReviewTaskStatus(taskId, options.onStatus)
   return {
     created,
-    finalStatus: task?.status,
-    task
+    taskId
   }
-}
-
-export async function pollReviewTaskStatus(taskId, onStatus) {
-  let latestTask = null
-  for (let i = 0; i < MAX_POLL_COUNT; i++) {
-    await new Promise((resolve) => window.setTimeout(resolve, POLL_INTERVAL_MS))
-    latestTask = await getReviewTask(taskId).catch(() => null)
-    if (!latestTask) {
-      continue
-    }
-
-    onStatus?.(latestTask)
-    saveRecentTask(latestTask)
-
-    if (!POLLING_STATUSES.includes(latestTask.status)) {
-      return latestTask
-    }
-  }
-
-  return latestTask
 }
