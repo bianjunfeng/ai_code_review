@@ -41,6 +41,7 @@ public class MonitorController {
         Long highRisk = defaultLong(reviewTaskMapper.countHighRisk());
         Long mediumRisk = defaultLong(reviewTaskMapper.countMediumRisk());
         Long lowRisk = defaultLong(reviewTaskMapper.countLowRisk());
+        Long cacheHits = defaultLong(reviewTaskMapper.countCacheHits());
 
         ReviewTaskStatisticsVO vo = ReviewTaskStatisticsVO.builder()
                 .totalTasks(total)
@@ -51,6 +52,7 @@ public class MonitorController {
                 .highRiskTasks(highRisk)
                 .mediumRiskTasks(mediumRisk)
                 .lowRiskTasks(lowRisk)
+                .cacheHits(cacheHits)
                 .avgDurationMs(0.0) // 暂不计算
                 .build();
 
