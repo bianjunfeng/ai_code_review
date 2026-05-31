@@ -41,11 +41,12 @@
     </select>
 
     <insert id="insertBatch" parameterType="java.util.List">
-        INSERT INTO review_file (task_id, file_path, file_status, language, additions, deletions, changes, patch)
+        INSERT INTO review_file (task_id, file_path, file_status, language, additions, deletions, changes, patch, skipped, skip_reason)
         VALUES
         <foreach collection="list" item="item" separator=",">
             (#{item.taskId}, #{item.filePath}, #{item.fileStatus}, #{item.language},
-             #{item.additions}, #{item.deletions}, #{item.changes}, #{item.patch})
+             #{item.additions}, #{item.deletions}, #{item.changes}, #{item.patch},
+             #{item.skipped}, #{item.skipReason})
         </foreach>
     </insert>
 
