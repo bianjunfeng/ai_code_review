@@ -338,6 +338,7 @@ MVP 阶段主要包括以下表：
 | review_task     | Review 任务表                 |
 | review_file     | PR 变更文件表                 |
 | review_comment  | AI Review 建议表              |
+| model_usage_log | 模型用量日志表                |
 | model_config    | 模型配置表                    |
 | prompt_template | Prompt 模板表                 |
 | review_skill    | Review Skill 配置表，二期扩展 |
@@ -367,19 +368,13 @@ GET /api/health
 
 ------
 
-### 8.2 GitHub PR 预览
+### 8.2 GitHub PR 列表
 
 ```http
-POST /api/github/preview
+GET /api/github/pulls
 ```
 
-请求示例：
-
-```json
-{
-  "prUrl": "https://github.com/example/demo/pull/12"
-}
-```
+Query 参数：owner, repo, state, page, pageSize
 
 响应示例：
 
@@ -388,18 +383,23 @@ POST /api/github/preview
   "code": 0,
   "message": "success",
   "data": {
-    "owner": "example",
-    "repo": "demo",
-    "pullNumber": 12,
-    "title": "待接入 GitHub API 的 PR 预览",
-    "author": "unknown",
-    "sourceBranch": "head",
-    "targetBranch": "base",
-    "state": "OPEN",
-    "additions": 0,
-    "deletions": 0,
-    "changedFiles": 0,
-    "files": []
+    "records": [
+      {
+        "owner": "example",
+        "repo": "demo",
+        "pullNumber": 12,
+        "title": "fix login bug",
+        "author": "demo-user",
+        "state": "OPEN",
+        "sourceBranch": "feature/login",
+        "targetBranch": "main",
+        "reviewed": false,
+        "latestTaskId": null,
+        "cachedAvailable": false
+      }
+    ],
+    "page": 1,
+    "pageSize": 10
   }
 }
 ```
@@ -416,7 +416,8 @@ POST /api/review-tasks
 
 ```json
 {
-  "prUrl": "https://github.com/example/demo/pull/12"
+  "prUrl": "https://github.com/example/demo/pull/12",
+  "forceRefresh": false
 }
 ```
 
@@ -428,17 +429,173 @@ POST /api/review-tasks
   "message": "success",
   "data": {
     "taskId": 10001,
-    "status": "PENDING"
+    "status": "PENDING",
+    "cached": false,
+    "cachedFromTaskId": null
   }
 }
 ```
 
 ------
 
-### 8.4 查询 Review 报告
+### 8.4 查询 Review 任务列表
+
+```http
+GET /api/review-tasks
+```
+
+Query 参数：page, pageSize, status, riskLevel, owner, repo, keyword, cached
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "records": [
+      {
+        "taskId": 12,
+        "prUrl": "https://github.com/example/demo/pull/12",
+        "prTitle": "fix login bug",
+        "status": "SUCCESS",
+        "riskScore": 78,
+        "riskLevel": "HIGH",
+        "cached": false,
+        "createdAt": "2026-05-30 20:01:00"
+      }
+    ],
+    "page": 1,
+    "pageSize": 10,
+    "total": 1,
+    "pages": 1
+  }
+}
+```
+
+------
+
+### 8.5 查询 Review 报告
 
 ```http
 GET /api/review-tasks/{taskId}/report
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "taskId": 12,
+    "prInfo": {
+      "title": "fix login bug",
+      "author": "demo-user",
+      "url": "https://github.com/example/demo/pull/12"
+    },
+    "summary": "本次 PR 主要修改了登录认证逻辑。",
+    "riskScore": 78,
+    "riskLevel": "HIGH",
+    "riskItems": [],
+    "finalReview": "建议修复高风险问题后再合并。"
+  }
+}
+```
+
+------
+
+### 8.6 模型用量监控
+
+#### 查询用量概览
+
+```http
+GET /api/model-usage/summary
+```
+
+Query 参数：from, to, modelName
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "totalCalls": 18,
+    "successCalls": 17,
+    "failedCalls": 1,
+    "successRate": 94.44,
+    "totalPromptTokens": 12345,
+    "totalCompletionTokens": 4321,
+    "totalTokens": 16666,
+    "avgLatencyMs": 1830
+  }
+}
+```
+
+#### 查询任务用量
+
+```http
+GET /api/model-usage/tasks/{taskId}
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "taskId": 12,
+    "totalCalls": 5,
+    "successCalls": 5,
+    "failedCalls": 0,
+    "totalPromptTokens": 8500,
+    "totalCompletionTokens": 2100,
+    "totalTokens": 10600,
+    "avgLatencyMs": 1850
+  }
+}
+```
+
+#### 查询调用明细
+
+```http
+GET /api/model-usage/logs
+```
+
+Query 参数：page, pageSize, taskId, success, modelName
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "records": [
+      {
+        "id": 1,
+        "taskId": 12,
+        "fileId": 31,
+        "provider": "openai-compatible",
+        "modelName": "deepseek-chat",
+        "callType": "FILE_REVIEW",
+        "promptTokens": 1200,
+        "completionTokens": 360,
+        "totalTokens": 1560,
+        "latencyMs": 1800,
+        "success": true,
+        "createdAt": "2026-05-30 20:03:00"
+      }
+    ],
+    "page": 1,
+    "pageSize": 10,
+    "total": 1,
+    "pages": 1
+  }
+}
 ```
 
 ------
