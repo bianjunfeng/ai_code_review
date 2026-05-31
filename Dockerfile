@@ -29,7 +29,8 @@ RUN apk add --no-cache nginx curl \
 COPY --from=backend-build /app/backend/target/*.jar /app/app.jar
 COPY --from=frontend-build /app/frontend/dist/ /var/www/ai-pr-review/
 
-RUN printf '%s\n' \
+RUN rm -f /etc/nginx/http.d/default.conf \
+    && printf '%s\n' \
     'server {' \
     '    listen 80;' \
     '    server_name _;' \
@@ -52,7 +53,7 @@ RUN printf '%s\n' \
     '        try_files $uri $uri/ /index.html;' \
     '    }' \
     '}' \
-    > /etc/nginx/http.d/default.conf \
+    > /etc/nginx/http.d/ai-pr-review.conf \
     && nginx -t
 
 RUN printf '%s\n' \
