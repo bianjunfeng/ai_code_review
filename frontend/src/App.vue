@@ -22,7 +22,8 @@
       :task-id="selectedTaskId"
       @back="handleNavigate('tasks')"
     />
-    <SettingsView v-else :key="viewRefreshKey" />
+    <SettingsView v-else-if="activeView === 'settings'" :key="viewRefreshKey" />
+    <ModelUsageView v-else-if="activeView === 'model-usage'" :key="viewRefreshKey" />
   </AppLayout>
 </template>
 
@@ -34,6 +35,7 @@ import PullRequestListView from './views/PullRequestListView.vue'
 import ReviewReportView from './views/ReviewReportView.vue'
 import ReviewTaskListView from './views/ReviewTaskListView.vue'
 import SettingsView from './views/SettingsView.vue'
+import ModelUsageView from './views/ModelUsageView.vue'
 
 const activeView = ref('dashboard')
 const selectedTaskId = ref(null)
