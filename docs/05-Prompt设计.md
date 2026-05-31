@@ -100,6 +100,15 @@ Prompt 设计需要同时满足代码评审质量、工程稳定性和前端展�
 | 高风险文件标记 | 配置、认证、权限、数据库等文件 | `{high_risk_files}` |
 | 测试文件变更 | 是否新增或修改测试文件 | `{has_test_changes}` |
 
+MVP 阶段的 `StaticRuleScanner` 只做轻量扫描，不引入外部工具。当前基础规则包括：
+
+- 硬编码密钥：识别 token、secret、password、API Key 等直接写入新增代码的线索。
+- SQL 风险：识别 SQL 字符串拼接和 MyBatis `${}` 原始替换。
+- 临时输出：识别 `System.out.println` 和 `console.log`。
+- 异常吞没：识别新增空 `catch` 块。
+
+这些结果只作为 Prompt 中的 `evidence` 线索，模型必须结合 diff 判断是否成立，不得把规则命中直接泛化为最终风险。
+
 ### 4.2 推荐上下文结构
 
 ```text

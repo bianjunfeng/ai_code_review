@@ -1,7 +1,10 @@
 package com.example.aipr.service.prompt;
 
 import com.example.aipr.dto.AiReviewContext;
+import com.example.aipr.dto.StaticRuleFinding;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -35,6 +38,33 @@ class PromptRendererTest {
         assertTrue(prompt.contains("\"evidence\""));
         assertTrue(prompt.contains("\"actionLevel\""));
         assertTrue(prompt.contains("MUST_FIX|SHOULD_FIX|OPTIONAL"));
+    }
+
+    @Test
+    void renderFileReviewPrompt_containsStaticRuleFindings() {
+        AiReviewContext context = AiReviewContext.builder()
+                .prTitle("Test PR")
+                .filePath("src/main/java/AuthService.java")
+                .patch("+ private static final String API_KEY = \"sk-abcdefghijklmnopqrstuvwxyz\";")
+                .staticRuleFindings(List.of(StaticRuleFinding.builder()
+                        .ruleCode("HARD_CODED_SECRET")
+                        .ruleName("疑似硬编码密钥")
+                        .riskType("SECURITY_RISK")
+                        .severity("HIGH")
+                        .line(12)
+                        .message("新增代码疑似直接写入 API Key。")
+                        .evidence("+ private static final String API_KEY = \"sk-abcdefghijklmnopqrstuvwxyz\";")
+                        .suggestion("请改为从环境变量读取。")
+                        .build()))
+                .build();
+
+        String prompt = promptRenderer.renderFileReviewPrompt(context);
+
+        assertTrue(prompt.contains("=== 静态规则扫描结果 ==="));
+        assertTrue(prompt.contains("[HARD_CODED_SECRET] 疑似硬编码密钥"));
+        assertTrue(prompt.contains("line: 12"));
+        assertTrue(prompt.contains("只围绕 evidence 判断，不要泛化"));
+        assertTrue(prompt.contains("必须基于 evidence 和 diff 判断是否成立"));
     }
 
     @Test

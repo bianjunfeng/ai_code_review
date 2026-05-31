@@ -41,6 +41,7 @@ public class ReviewTaskExecutor {
     private final ReviewCommentMapper reviewCommentMapper;
     private final AiReviewService aiReviewService;
     private final RiskScoreCalculator riskScoreCalculator;
+    private final StaticRuleScanner staticRuleScanner;
     private final ObjectMapper objectMapper;
     private final ReviewProperties reviewProperties;
     @org.springframework.beans.factory.annotation.Qualifier("fileReviewExecutor")
@@ -107,6 +108,11 @@ public class ReviewTaskExecutor {
     }
 
     private AiReviewContext buildContext(ReviewTask task, ReviewFile file) {
+        var staticRuleFindings = staticRuleScanner.scan(file.getFilePath(), file.getPatch());
+        if (!staticRuleFindings.isEmpty()) {
+            log.info("[Executor] taskId={}, 静态规则扫描命中, file={}, count={}",
+                    task.getId(), file.getFilePath(), staticRuleFindings.size());
+        }
         return AiReviewContext.builder()
                 .taskId(task.getId())
                 .fileId(file.getId())
@@ -122,6 +128,7 @@ public class ReviewTaskExecutor {
                 .deletions(file.getDeletions())
                 .changes(file.getChanges())
                 .patch(file.getPatch())
+                .staticRuleFindings(staticRuleFindings)
                 .build();
     }
 
