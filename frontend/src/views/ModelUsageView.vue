@@ -24,39 +24,39 @@
       <div class="stats-grid" v-if="summary">
         <div class="stat-card">
           <div class="stat-label">总调用次数</div>
-          <div class="stat-value">{{ summary.totalCalls }}</div>
+          <div class="stat-value">{{ formatInteger(summary.totalCalls) }}</div>
         </div>
         <div class="stat-card success">
           <div class="stat-label">成功次数</div>
-          <div class="stat-value">{{ summary.successCalls }}</div>
+          <div class="stat-value">{{ formatInteger(summary.successCalls) }}</div>
         </div>
         <div class="stat-card danger">
           <div class="stat-label">失败次数</div>
-          <div class="stat-value">{{ summary.failedCalls }}</div>
+          <div class="stat-value">{{ formatInteger(summary.failedCalls) }}</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">成功率</div>
-          <div class="stat-value">{{ summary.successRate }}%</div>
+          <div class="stat-value">{{ formatFixed(summary.successRate, 1) }}%</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Prompt Tokens</div>
-          <div class="stat-value">{{ summary.totalPromptTokens }}</div>
+          <div class="stat-value">{{ formatInteger(summary.totalPromptTokens) }}</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Completion Tokens</div>
-          <div class="stat-value">{{ summary.totalCompletionTokens }}</div>
+          <div class="stat-value">{{ formatInteger(summary.totalCompletionTokens) }}</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">总 Tokens</div>
-          <div class="stat-value">{{ summary.totalTokens }}</div>
+          <div class="stat-value">{{ formatInteger(summary.totalTokens) }}</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">预估费用</div>
-          <div class="stat-value">${{ summary.estimatedCost }}</div>
+          <div class="stat-value">${{ formatFixed(summary.estimatedCost, 2) }}</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">平均延迟</div>
-          <div class="stat-value">{{ summary.avgLatencyMs }}ms</div>
+          <div class="stat-value">{{ formatFixed(summary.avgLatencyMs, 2) }}ms</div>
         </div>
       </div>
     </section>
@@ -99,7 +99,7 @@
         <el-table-column prop="totalTokens" label="总计" width="80" align="right" />
         <el-table-column prop="latencyMs" label="延迟" width="100" align="right">
           <template #default="{ row }">
-            {{ row.latencyMs }}ms
+            {{ formatInteger(row.latencyMs) }}ms
           </template>
         </el-table-column>
         <el-table-column prop="success" label="结果" width="80" align="center">
@@ -132,6 +132,7 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { getModelUsageSummary, getModelUsageLogs } from '../api/modelUsage'
+import { formatFixed, formatInteger } from '../utils/numberFormat'
 
 const loading = ref(false)
 const logsLoading = ref(false)
