@@ -27,6 +27,9 @@ export const mockReport = {
       riskType: 'SECURITY_RISK',
       title: 'JWT 密钥存在硬编码风险',
       description: '密钥直接写在源码中，公开仓库或日志泄露时会导致 token 可被伪造。',
+      reason: '认证 token 签名密钥属于敏感配置，硬编码会扩大泄露影响面。',
+      evidence: 'private static final String SECRET = "123456";',
+      actionLevel: 'MUST_FIX',
       suggestion: '建议改为从环境变量或安全配置中心读取，并区分本地、测试和生产环境。',
       confidence: 0.92,
       needHumanCheck: true
@@ -37,6 +40,9 @@ export const mockReport = {
       riskType: 'BUG_RISK',
       title: 'refresh token 过期后仍可能继续执行用户信息查询',
       description: '当前异常分支只记录错误，没有及时中断后续流程。',
+      reason: '认证失败后继续读取用户上下文可能造成错误响应或越权路径。',
+      evidence: 'catch 后继续执行 userRepository.findById(...)',
+      actionLevel: 'SHOULD_FIX',
       suggestion: '建议在 token 校验失败时直接返回明确业务异常，避免继续访问用户上下文。',
       confidence: 0.75,
       needHumanCheck: true
@@ -47,6 +53,9 @@ export const mockReport = {
       riskType: 'TEST_RISK',
       title: '测试只覆盖登录成功路径',
       description: '测试覆盖不完整。',
+      reason: '认证逻辑变更缺少异常分支覆盖，回归时不容易发现 token 校验问题。',
+      evidence: 'LoginServiceTest 仅包含 loginSuccess 用例',
+      actionLevel: 'OPTIONAL',
       suggestion: '建议补充 token 过期、签名错误、用户不存在和密码错误等分支测试。',
       confidence: 0.68,
       needHumanCheck: false

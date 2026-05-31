@@ -51,7 +51,9 @@ class ReviewReportServiceTest {
         assertTrue(result.getMarkdown().contains("风险等级：HIGH"));
         assertTrue(result.getMarkdown().contains("PR：补充评审接口"));
         assertTrue(result.getMarkdown().contains("#### 1. [HIGH] 空指针风险"));
-        assertTrue(result.getMarkdown().contains("原因：缺少空值保护"));
+        assertTrue(result.getMarkdown().contains("依据：缺少空值保护"));
+        assertTrue(result.getMarkdown().contains("证据：user.getName()"));
+        assertTrue(result.getMarkdown().contains("处理级别：MUST_FIX"));
         assertTrue(result.getMarkdown().contains("### 最终结论"));
     }
 
@@ -146,6 +148,8 @@ class ReviewReportServiceTest {
         comment.setTitle("空指针风险");
         comment.setDescription("调用对象前没有判断为空。");
         comment.setReason("缺少空值保护");
+        comment.setEvidence("user.getName()");
+        comment.setActionLevel("MUST_FIX");
         comment.setSuggestion("调用前增加非空校验。");
         comment.setConfidence(BigDecimal.valueOf(0.91));
         comment.setNeedHumanCheck(true);

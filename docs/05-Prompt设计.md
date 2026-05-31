@@ -49,7 +49,7 @@ Prompt 设计需要同时满足代码评审质量、工程稳定性和前端展�
 
 3. **风险点必须可定位、可解释、可处理**
 
-   每个风险点必须包含 `filePath`、`description`、`reason`、`suggestion`、`confidence`、`evidence`，便于前端展示和人工复核。
+   每个风险点必须包含 `filePath`、`description`、`reason`、`suggestion`、`confidence`、`evidence`、`actionLevel`，便于前端展示和人工复核。
 
 4. **输出优先使用 JSON**
 
@@ -179,6 +179,7 @@ Diff 内容:
       "confidenceLevel": "HIGH",
       "needHumanCheck": false,
       "evidence": "private static final String SECRET = \"123456\";",
+      "actionLevel": "MUST_FIX",
       "comment": "建议不要在源码中硬编码 JWT 密钥，可以改为从环境变量中读取。"
     }
   ],
@@ -213,6 +214,7 @@ Diff 内容:
 | `riskItems[].confidenceLevel` | string | 置信度等级：`LOW`、`MEDIUM`、`HIGH`。 |
 | `riskItems[].needHumanCheck` | boolean | 是否需要人工进一步确认。 |
 | `riskItems[].evidence` | string | diff 中可支撑判断的关键证据，避免过长。 |
+| `riskItems[].actionLevel` | string | 处理级别：`MUST_FIX`、`SHOULD_FIX`、`OPTIONAL`。 |
 | `riskItems[].comment` | string | 可复制到 GitHub PR 的 Review 评论。 |
 | `testSuggestions` | array | 测试建议。 |
 | `finalReviewDecision` | string | `APPROVE`、`COMMENT`、`REQUEST_CHANGES`。 |
@@ -234,6 +236,9 @@ Diff 内容:
       "riskLevel": "HIGH",
       "title": "登录失败次数未限制",
       "description": "当前登录逻辑没有看到失败次数限制或锁定策略，可能被暴力破解。",
+      "reason": "登录接口缺少失败次数限制会增加暴力破解成功概率。",
+      "evidence": "+ public LoginResult login(String username, String password) {",
+      "actionLevel": "SHOULD_FIX",
       "suggestion": "建议增加登录失败次数限制、短时间锁定或验证码策略，并补充对应测试。",
       "confidence": 0.78,
       "needHumanCheck": true
@@ -247,6 +252,7 @@ Diff 内容:
 - `riskType` 使用项目后端稳定枚举，避免前后端展示不一致。
 - `riskCategory` 用于展示更细的风险类型，不建议在 MVP 阶段直接扩展为后端主枚举。
 - `riskLevel` 是评论级风险等级；后端仍兼容旧字段 `severity`，但最终报告的 `riskScore` 和 `riskLevel` 由后端固定规则重新计算。
+- `actionLevel` 只能是 `MUST_FIX`、`SHOULD_FIX`、`OPTIONAL`；缺失时后端会按风险等级给默认值。
 - `confidence` 使用 0-1 数值，便于后端排序和阈值判断。
 
 ## 6. System Prompt
@@ -290,7 +296,7 @@ System Prompt 用于统一模型角色、边界和输出规范。该 Prompt 应�
 2. 不允许编造未提供的文件、方法、类、配置、业务背景或历史代码。
 3. 如果上下文不足以确定问题，必须降低 confidence，并设置 needHumanCheck=true。
 4. 规则扫描结果只是线索，不是最终结论；你需要结合 diff 判断是否成立。
-5. 每个风险点必须包含文件路径、问题描述、原因、修改建议、证据和置信度。
+5. 每个风险点必须包含文件路径、问题描述、原因、修改建议、证据、处理级别和置信度。
 6. 优先识别安全、权限、配置、SQL 注入、异常处理、空指针、性能、敏感日志、依赖和测试缺失风险。
 7. 不要输出泛泛而谈的建议；所有建议都应具体、可执行、可复制到 Code Review 评论中。
 8. 输出必须是合法 JSON。

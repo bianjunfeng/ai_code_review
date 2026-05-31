@@ -111,6 +111,7 @@ public class ReviewTaskExecutor {
                 .taskId(task.getId())
                 .fileId(file.getId())
                 .prTitle(task.getPrTitle())
+                .prDescription(task.getPrDescription())
                 .prAuthor(task.getPrAuthor())
                 .sourceBranch(task.getSourceBranch())
                 .targetBranch(task.getTargetBranch())
@@ -165,6 +166,9 @@ public class ReviewTaskExecutor {
         entity.setRiskLevel(comment.getSeverity());
         entity.setTitle(comment.getTitle());
         entity.setDescription(comment.getDescription());
+        entity.setReason(comment.getReason());
+        entity.setEvidence(comment.getEvidence());
+        entity.setActionLevel(comment.getActionLevel());
         entity.setSuggestion(comment.getSuggestion());
         entity.setConfidence(toBigDecimal(comment.getConfidence()));
         entity.setNeedHumanCheck(comment.getNeedHumanCheck());

@@ -31,6 +31,10 @@ class PromptRendererTest {
         assertTrue(prompt.contains("PR 描述：add token refresh logic"));
         assertTrue(prompt.contains("文件路径：src/main/java/AuthService.java"));
         assertTrue(prompt.contains("+ some code"));
+        assertTrue(prompt.contains("\"reason\""));
+        assertTrue(prompt.contains("\"evidence\""));
+        assertTrue(prompt.contains("\"actionLevel\""));
+        assertTrue(prompt.contains("MUST_FIX|SHOULD_FIX|OPTIONAL"));
     }
 
     @Test

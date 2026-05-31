@@ -93,6 +93,8 @@ Diff patch
 风险等级
 问题描述
 原因分析
+风险证据
+处理级别
 修改建议
 置信度
 是否需要人工确认
@@ -517,7 +519,22 @@ GET /api/review-tasks/{taskId}/report
     "summary": "本次 PR 主要修改了登录认证逻辑。",
     "riskScore": 78,
     "riskLevel": "HIGH",
-    "riskItems": [],
+    "riskItems": [
+      {
+        "filePath": "src/main/java/com/demo/auth/JwtUtil.java",
+        "line": 35,
+        "riskLevel": "HIGH",
+        "riskType": "SECURITY_RISK",
+        "title": "JWT 密钥存在硬编码风险",
+        "description": "密钥直接写在源码中，公开仓库可能导致泄露。",
+        "reason": "密钥属于敏感配置，硬编码会扩大泄露影响面。",
+        "evidence": "private static final String SECRET = \"123456\";",
+        "actionLevel": "MUST_FIX",
+        "suggestion": "建议改为从环境变量或安全配置读取。",
+        "confidence": 0.92,
+        "needHumanCheck": true
+      }
+    ],
     "finalReview": "建议修复高风险问题后再合并。"
   }
 }
