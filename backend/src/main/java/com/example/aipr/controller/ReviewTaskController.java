@@ -14,9 +14,12 @@ import com.example.aipr.vo.ReviewFileVO;
 import com.example.aipr.vo.ReviewReportVO;
 import com.example.aipr.vo.ReviewTaskCreatedVO;
 import com.example.aipr.vo.ReviewTaskDetailVO;
+import com.example.aipr.vo.ReviewTaskListVO;
+import com.example.aipr.vo.ReviewTaskPageVO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -77,5 +81,17 @@ public class ReviewTaskController {
     @GetMapping("/{taskId}/report")
     public Result<ReviewReportVO> report(@PathVariable Long taskId) {
         return Result.ok(reviewReportService.getReport(taskId));
+    }
+
+    @GetMapping
+    public Result<ReviewTaskPageVO> list(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String riskLevel,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate createdFrom,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate createdTo) {
+        return Result.ok(reviewTaskService.listTasks(page, pageSize, status, riskLevel, keyword, createdFrom, createdTo));
     }
 }

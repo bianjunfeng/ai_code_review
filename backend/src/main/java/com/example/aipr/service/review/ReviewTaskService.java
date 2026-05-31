@@ -23,12 +23,16 @@ import com.example.aipr.vo.ReviewCommentVO;
 import com.example.aipr.vo.ReviewFileVO;
 import com.example.aipr.vo.ReviewTaskCreatedVO;
 import com.example.aipr.vo.ReviewTaskDetailVO;
+import com.example.aipr.vo.ReviewTaskListVO;
+import com.example.aipr.vo.ReviewTaskPageVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -169,6 +173,84 @@ public class ReviewTaskService {
                 .stream()
                 .map(this::toCommentVO)
                 .toList();
+    }
+
+    public ReviewTaskPageVO listTasks(int page, int pageSize, String status, String riskLevel,
+                                       String keyword, LocalDate createdFrom, LocalDate createdTo) {
+        LambdaQueryWrapper<ReviewTask> wrapper = new LambdaQueryWrapper<>();
+
+        if (status != null && !status.isBlank()) {
+            wrapper.eq(ReviewTask::getStatus, status);
+        }
+
+        if (riskLevel != null && !riskLevel.isBlank()) {
+            wrapper.eq(ReviewTask::getRiskLevel, riskLevel);
+        }
+
+        if (keyword != null && !keyword.isBlank()) {
+            wrapper.and(w -> w.like(ReviewTask::getPrTitle, keyword)
+                    .or()
+                    .like(ReviewTask::getOwnerName, keyword)
+                    .or()
+                    .like(ReviewTask::getRepoName, keyword)
+                    .or()
+                    .like(ReviewTask::getPrAuthor, keyword));
+        }
+
+        if (createdFrom != null) {
+            wrapper.ge(ReviewTask::getCreatedAt, createdFrom.atStartOfDay());
+        }
+
+        if (createdTo != null) {
+            wrapper.le(ReviewTask::getCreatedAt, createdTo.atTime(LocalTime.MAX));
+        }
+
+        wrapper.orderByDesc(ReviewTask::getCreatedAt);
+
+        // MyBatis-Plus pagination
+        long total = reviewTaskMapper.selectCount(wrapper);
+        int from = (page - 1) * pageSize;
+        wrapper.last("LIMIT " + from + ", " + pageSize);
+
+        List<ReviewTask> tasks = reviewTaskMapper.selectList(wrapper);
+
+        List<ReviewTaskListVO> records = tasks.stream()
+                .map(this::toListVO)
+                .toList();
+
+        int pages = pageSize > 0 ? (int) Math.ceil((double) total / pageSize) : 0;
+
+        return ReviewTaskPageVO.builder()
+                .records(records)
+                .total(total)
+                .page(page)
+                .pageSize(pageSize)
+                .pages(pages)
+                .build();
+    }
+
+    private ReviewTaskListVO toListVO(ReviewTask task) {
+        return ReviewTaskListVO.builder()
+                .taskId(task.getId())
+                .prUrl(task.getPrUrl())
+                .prTitle(task.getPrTitle())
+                .author(task.getPrAuthor())
+                .ownerName(task.getOwnerName())
+                .repoName(task.getRepoName())
+                .pullNumber(task.getPrNumber())
+                .sourceBranch(task.getSourceBranch())
+                .targetBranch(task.getTargetBranch())
+                .status(task.getStatus())
+                .riskScore(task.getRiskScore())
+                .riskLevel(task.getRiskLevel())
+                .modelName(task.getModelName())
+                .promptVersion(task.getPromptVersion())
+                .cached(task.getCachedFromTaskId() != null)
+                .cachedFromTaskId(task.getCachedFromTaskId())
+                .errorMessage(task.getErrorMessage())
+                .createdAt(formatTime(task.getCreatedAt()))
+                .updatedAt(formatTime(task.getUpdatedAt()))
+                .build();
     }
 
     public ReviewTask requireTask(Long taskId) {
