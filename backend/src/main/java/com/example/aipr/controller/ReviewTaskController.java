@@ -11,6 +11,7 @@ import com.example.aipr.service.review.ReviewTaskService;
 import com.example.aipr.util.IpUtils;
 import com.example.aipr.vo.ReviewCommentVO;
 import com.example.aipr.vo.ReviewFileVO;
+import com.example.aipr.vo.ReviewMarkdownVO;
 import com.example.aipr.vo.ReviewReportVO;
 import com.example.aipr.vo.ReviewTaskCreatedVO;
 import com.example.aipr.vo.ReviewTaskDetailVO;
@@ -81,6 +82,11 @@ public class ReviewTaskController {
     @GetMapping("/{taskId}/report")
     public Result<ReviewReportVO> report(@PathVariable Long taskId) {
         return Result.ok(reviewReportService.getReport(taskId));
+    }
+
+    @GetMapping("/{taskId}/review-markdown")
+    public Result<ReviewMarkdownVO> reviewMarkdown(@PathVariable Long taskId) {
+        return Result.ok(reviewReportService.getReviewMarkdown(taskId));
     }
 
     @GetMapping
