@@ -11,7 +11,7 @@
         </div>
       </div>
 
-      <el-menu class="nav-menu" :default-active="activeView" @select="handleSelect">
+      <el-menu class="nav-menu" :default-active="activeMenu" @select="handleSelect">
         <el-menu-item index="dashboard">
           <el-icon><DataBoard /></el-icon>
           <span>工作台</span>
@@ -56,6 +56,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { Connection, DataBoard, List, Refresh, Setting, Tickets, Monitor } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -65,7 +66,8 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['navigate', 'refresh'])
+const emit = defineEmits(['refresh'])
+const router = useRouter()
 
 const metaMap = {
   dashboard: {
@@ -94,10 +96,19 @@ const metaMap = {
   }
 }
 
+const pathMap = {
+  dashboard: '/dashboard',
+  pulls: '/pulls',
+  tasks: '/tasks',
+  'model-usage': '/model-usage',
+  settings: '/settings'
+}
+
 const activeMeta = computed(() => metaMap[props.activeView] || metaMap.dashboard)
+const activeMenu = computed(() => (props.activeView === 'report' ? 'tasks' : props.activeView))
 
 function handleSelect(viewName) {
-  emit('navigate', viewName)
+  router.push(pathMap[viewName] || '/dashboard')
 }
 </script>
 
