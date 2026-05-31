@@ -41,7 +41,8 @@ public class ConfigController {
 
         // GitHub 配置
         vo.setGithubTokenConfigured(githubProperties.getToken() != null && !githubProperties.getToken().isBlank());
-        vo.setGithubApiReachable(checkGithubApiReachable());
+        // 短期展示为"Token 已配置"，P1再做真实连通性检测
+        vo.setGithubTokenStatus(githubProperties.getToken() != null && !githubProperties.getToken().isBlank());
 
         // 数据库连接
         vo.setDatabaseConnected(checkDatabaseConnected());
@@ -54,16 +55,6 @@ public class ConfigController {
         vo.setRateLimitEnabled(rateLimitProperties.isEnabled());
 
         return Result.ok(vo);
-    }
-
-    private boolean checkGithubApiReachable() {
-        try {
-            // 简单验证：检查 token 是否配置且 API URL 可达
-            return githubProperties.getToken() != null && !githubProperties.getToken().isBlank();
-        } catch (Exception e) {
-            log.warn("GitHub API reachable check failed: {}", e.getMessage());
-            return false;
-        }
     }
 
     private boolean checkDatabaseConnected() {
@@ -94,7 +85,7 @@ public class ConfigController {
         private Integer aiMaxTokens;
         private String aiPromptVersion;
         private boolean githubTokenConfigured;
-        private boolean githubApiReachable;
+        private boolean githubTokenStatus; // 短期展示为"Token 已配置"，P1再做真实连通性
         private boolean databaseConnected;
         private boolean redisConnected;
         private boolean cacheEnabled;

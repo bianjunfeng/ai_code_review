@@ -27,15 +27,9 @@
           </el-tag>
         </div>
         <div class="status-item">
-          <span>GitHub API</span>
-          <el-tag :type="config?.githubApiReachable ? 'success' : 'info'" effect="plain">
-            {{ config ? yesNo(config.githubApiReachable) : '未接入' }}
-          </el-tag>
-        </div>
-        <div class="status-item">
-          <span>AI Key</span>
-          <el-tag :type="config?.aiKeyConfigured ? 'success' : 'info'" effect="plain">
-            {{ config ? yesNo(config.aiKeyConfigured) : '未接入' }}
+          <span>AI 模型</span>
+          <el-tag :type="config?.aiConfigured ? 'success' : 'info'" effect="plain">
+            {{ config ? yesNo(config.aiConfigured) : '未接入' }}
           </el-tag>
         </div>
         <div class="status-item">
@@ -44,7 +38,7 @@
         </div>
         <div class="status-item">
           <span>Prompt 版本</span>
-          <strong>{{ config?.promptVersion || '-' }}</strong>
+          <strong>{{ config?.aiPromptVersion || '-' }}</strong>
         </div>
         <div class="status-item">
           <span>数据库</span>
