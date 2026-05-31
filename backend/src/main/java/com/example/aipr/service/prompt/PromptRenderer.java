@@ -1,7 +1,10 @@
 package com.example.aipr.service.prompt;
 
 import com.example.aipr.dto.AiReviewContext;
+import com.example.aipr.dto.StaticRuleFinding;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 public class PromptRenderer {
@@ -49,6 +52,8 @@ public class PromptRenderer {
             }
         }
 
+        appendStaticRuleFindings(prompt, context.getStaticRuleFindings());
+
         prompt.append("\n请基于上述信息，对该文件进行代码评审。只输出合法 JSON，不要输出 Markdown 或其他内容。\n");
         prompt.append("输出格式：\n");
         prompt.append("{\n");
@@ -80,8 +85,36 @@ public class PromptRenderer {
         prompt.append("7. 不要输出泛泛而谈的建议，要具体指出问题所在。\n");
         prompt.append("8. 如果没有问题，comments 可以为空数组。\n");
         prompt.append("9. 只输出合法 JSON，不要输出 Markdown 代码块。\n");
+        prompt.append("10. 静态规则扫描结果只是风险线索，必须基于 evidence 和 diff 判断是否成立；不要脱离证据泛化为规则清单。\n");
 
         return prompt.toString();
+    }
+
+    private void appendStaticRuleFindings(StringBuilder prompt, List<StaticRuleFinding> findings) {
+        prompt.append("\n=== 静态规则扫描结果 ===\n");
+        if (findings == null || findings.isEmpty()) {
+            prompt.append("未命中基础静态规则。\n");
+            return;
+        }
+
+        prompt.append("以下命中项是规则扫描线索，不是最终结论。请只围绕 evidence 判断，不要泛化。\n");
+        for (int i = 0; i < findings.size(); i++) {
+            StaticRuleFinding finding = findings.get(i);
+            prompt.append(i + 1).append(". [").append(nullToEmpty(finding.getRuleCode())).append("] ");
+            prompt.append(nullToEmpty(finding.getRuleName())).append("\n");
+            if (finding.getLine() != null) {
+                prompt.append("   line: ").append(finding.getLine()).append("\n");
+            }
+            prompt.append("   riskType: ").append(nullToEmpty(finding.getRiskType())).append("\n");
+            prompt.append("   severity: ").append(nullToEmpty(finding.getSeverity())).append("\n");
+            prompt.append("   message: ").append(nullToEmpty(finding.getMessage())).append("\n");
+            prompt.append("   evidence: ").append(nullToEmpty(finding.getEvidence())).append("\n");
+            prompt.append("   suggestion: ").append(nullToEmpty(finding.getSuggestion())).append("\n");
+        }
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     public String detectLanguage(String filePath) {

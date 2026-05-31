@@ -3,6 +3,8 @@ package com.example.aipr.dto;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 @Builder
 public class AiReviewContext {
@@ -22,4 +24,5 @@ public class AiReviewContext {
     private Integer changes;
     private String patch;
     private Boolean truncated;
+    private List<StaticRuleFinding> staticRuleFindings;
 }
