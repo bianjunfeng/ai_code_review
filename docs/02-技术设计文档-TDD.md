@@ -317,6 +317,8 @@ com.example.aipr
 17. 如果任一步骤失败，更新任务状态为 FAILED
 ```
 
+当前 dev 状态：后端已经具备文件级并发 Review、单文件超时、缓存复用和 `SCORING` 状态；但 PR 信息获取和 Diff 获取仍在创建任务接口中同步完成，`FETCHING_PR`、`PARSING_DIFF` 尚未真正作为异步状态落地。后续优化评审耗时时，应优先把这两步纳入任务状态流。
+
 ## 6.3 伪代码
 
 ```java
@@ -335,7 +337,7 @@ public Long createReviewTask(CreateReviewTaskRequest request) {
 
     return task.getId();
 }
-@Async("reviewTaskExecutor")
+@Async("reviewAsyncExecutor")
 public void executeAsync(Long taskId) {
     try {
         updateStatus(taskId, "FETCHING_PR");
@@ -980,8 +982,8 @@ AI Review 需要调用 GitHub API 和大模型 API，耗时较长。如果同步
 @EnableAsync
 public class AsyncConfig {
 
-    @Bean("reviewTaskExecutor")
-    public Executor reviewTaskExecutor() {
+    @Bean("reviewAsyncExecutor")
+    public Executor reviewAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(3);
         executor.setMaxPoolSize(6);
@@ -991,6 +993,13 @@ public class AsyncConfig {
         return executor;
     }
 }
+```
+
+当前 dev 已拆分为两个执行器：
+
+```text
+reviewAsyncExecutor：任务级异步执行器，一个 PR Review 任务对应一次异步执行。
+fileReviewExecutor：文件级并发执行器，单个任务内多个文件并行调用 AI，并配合单文件超时控制。
 ```
 
 ## 14.3 任务状态流转
@@ -1004,6 +1013,8 @@ PENDING
 → SCORING
 → SUCCESS
 ```
+
+当前 dev 状态：`REVIEWING`、`SUMMARIZING`、`SCORING`、`SUCCESS` 已由执行器实际更新；`FETCHING_PR`、`PARSING_DIFF` 已在枚举和前端展示中预留，但创建任务阶段仍同步获取 PR 与 Diff，后续需要迁入异步执行器或显式更新状态。
 
 失败时：
 

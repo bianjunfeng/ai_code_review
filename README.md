@@ -347,6 +347,13 @@ MVP 阶段主要包括以下表：
 
 ## 8. 核心接口
 
+当前 dev 状态说明：
+
+```text
+已实现：健康检查、PR 预览、Review 任务创建、任务列表、任务详情、文件列表、建议列表、报告详情、配置状态、模型用量监控和监控统计。
+待补齐：GitHub PR 列表、单个 PR 本地评审状态、GitHub Review Markdown 后端导出。
+```
+
 ### 8.1 健康检查
 
 ```http
@@ -373,6 +380,8 @@ GET /api/health
 ```http
 GET /api/github/pulls
 ```
+
+当前 dev 状态：前端已接入，后端尚未实现。当前可先通过 `POST /api/github/preview` 和手动 PR URL 入口完成评审主链路。
 
 Query 参数：owner, repo, state, page, pageSize
 
@@ -444,7 +453,7 @@ POST /api/review-tasks
 GET /api/review-tasks
 ```
 
-Query 参数：page, pageSize, status, riskLevel, owner, repo, keyword, cached
+Query 参数：page, pageSize, status, riskLevel, keyword, createdFrom, createdTo
 
 响应示例：
 
