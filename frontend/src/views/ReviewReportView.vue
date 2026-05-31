@@ -16,6 +16,9 @@
         <el-button :icon="CopyDocument" type="primary" plain :disabled="!report" @click="copyMarkdown">
           复制 Review
         </el-button>
+        <el-button :icon="Download" plain :disabled="!report" @click="downloadMarkdown">
+          导出 Markdown
+        </el-button>
         <el-button :icon="Link" plain :disabled="!prUrl" @click="openExternal(prUrl)">GitHub</el-button>
       </div>
     </section>
@@ -182,7 +185,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, CopyDocument, Link, Loading, Refresh } from '@element-plus/icons-vue'
+import { ArrowLeft, CopyDocument, Download, Link, Loading, Refresh } from '@element-plus/icons-vue'
 import { getReviewComments, getReviewFiles, getReviewMarkdown, getReviewReport, getReviewTask, getTaskModelUsage } from '../api/review'
 import FinalReviewCard from '../components/FinalReviewCard.vue'
 import PrInfoCard from '../components/PrInfoCard.vue'
@@ -443,6 +446,32 @@ async function copyMarkdown() {
     document.body.removeChild(textarea)
     ElMessage.success('Review Markdown 已复制')
   }
+}
+
+async function downloadMarkdown() {
+  if (!report.value) {
+    ElMessage.warning('暂无可导出报告')
+    return
+  }
+
+  let markdown = ''
+  try {
+    const data = await getReviewMarkdown(props.taskId)
+    markdown = data?.markdown || ''
+  } catch {
+    markdown = buildReviewMarkdown(report.value, comments.value)
+  }
+
+  const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `PR-Review-${props.taskId}.md`
+  document.body.appendChild(anchor)
+  anchor.click()
+  document.body.removeChild(anchor)
+  URL.revokeObjectURL(url)
+  ElMessage.success('Markdown 文件已下载')
 }
 
 function openExternal(url) {
