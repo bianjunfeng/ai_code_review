@@ -121,6 +121,7 @@ public class ReviewTaskExecutor {
                 .prAuthor(task.getPrAuthor())
                 .sourceBranch(task.getSourceBranch())
                 .targetBranch(task.getTargetBranch())
+                .commitSummary(task.getCommitSummary())
                 .filePath(file.getFilePath())
                 .fileStatus(file.getFileStatus())
                 .language(file.getLanguage())
