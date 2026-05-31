@@ -47,6 +47,7 @@ public class ReviewTaskService {
     private final ReviewFileMapper reviewFileMapper;
     private final ReviewCommentMapper reviewCommentMapper;
     private final ReviewTaskExecutor reviewTaskExecutor;
+    private final DiffPreprocessor diffPreprocessor;
     private final AiProperties aiProperties;
     private final RateLimitService rateLimitService;
     private final RateLimitProperties rateLimitProperties;
@@ -216,6 +217,9 @@ public class ReviewTaskService {
     }
 
     private ReviewFile toReviewFile(Long taskId, GitHubChangedFile changedFile) {
+        // ── P0：Diff 预处理，在保存文件前决定跳过策略 ──
+        DiffPreprocessor.Decision decision = diffPreprocessor.evaluate(changedFile);
+
         ReviewFile file = new ReviewFile();
         file.setTaskId(taskId);
         file.setFilePath(changedFile.getFilename());
@@ -225,7 +229,8 @@ public class ReviewTaskService {
         file.setDeletions(defaultInt(changedFile.getDeletions()));
         file.setChanges(defaultInt(changedFile.getChanges()));
         file.setPatch(changedFile.getPatch());
-        file.setSkipped(false);
+        file.setSkipped(decision.skipped());
+        file.setSkipReason(decision.skipReason());
         file.setCreatedAt(LocalDateTime.now());
 
         return file;

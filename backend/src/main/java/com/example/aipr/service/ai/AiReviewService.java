@@ -101,20 +101,26 @@ public class AiReviewService {
             return true;
         }
 
+        // ── 安全网：DiffPreprocessor 已在上游处理了绝大多数跳过逻辑 ──
+        // 这里保留一份最小化检查，防止意外遗漏
+
         for (String dir : SKIP_DIRECTORIES) {
             if (filePath.contains(dir)) {
+                log.debug("[AI] 跳过目录匹配文件（安全网）, path={}", filePath);
                 return true;
             }
         }
 
         for (String skipFile : SKIP_FILES) {
             if (filePath.endsWith(skipFile)) {
+                log.debug("[AI] 跳过 lock 文件（安全网）, path={}", filePath);
                 return true;
             }
         }
 
         for (String ext : SKIP_EXTENSIONS) {
             if (filePath.endsWith(ext)) {
+                log.debug("[AI] 跳过二进制/生成文件（安全网）, path={}", filePath);
                 return true;
             }
         }
