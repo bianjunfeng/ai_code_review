@@ -161,7 +161,9 @@ Review 建议列表
 | Prompt Template        | 管理不同评审场景的 Prompt                     |
 | Review Pipeline        | 编排 PR 获取、Diff 解析、AI Review 和结果汇总 |
 | JSON Structured Output | 要求模型输出结构化 JSON                       |
-| Skill Engine           | 二期扩展，用于专项代码审查                    |
+| Static Rule Scanner    | AI Review 前置规则扫描，检测密钥/SQL/日志等   |
+| Prompt Layering        | 文件级 Review + PR 级 Summary 两阶段设计      |
+| Skill Engine           | 配置表已建立，执行逻辑规划中（二期扩展）       |
 | RAG                    | 后期扩展，用于仓库上下文检索                  |
 | Agent                  | 后期扩展，用于多步分析和工具调用              |
 
@@ -258,10 +260,12 @@ LLM Client
 → 解析 PR URL
 → 获取 PR 基本信息
 → 获取 changed files
-→ 过滤无效文件
-→ Diff 切分
-→ 文件级 AI Review
-→ PR 级汇总
+→ 获取 Commit Summary（最近 10 条）
+→ 过滤无效文件（图片/锁文件/生成文件等）
+→ Diff 切分与截断（单文件最大 12000 字符）
+→ Static Rule Scanner 前置扫描
+→ 文件级 AI Review（并发执行）
+→ PR 级 Summary 汇总
 → 保存 Review 结果
 → 前端展示报告
 ```
@@ -335,15 +339,14 @@ docs
 
 MVP 阶段主要包括以下表：
 
-| 表名            | 说明                          |
-| --------------- | ----------------------------- |
-| review_task     | Review 任务表                 |
-| review_file     | PR 变更文件表                 |
-| review_comment  | AI Review 建议表              |
-| model_usage_log | 模型用量日志表                |
-| model_config    | 模型配置表                    |
-| prompt_template | Prompt 模板表                 |
-| review_skill    | Review Skill 配置表，二期扩展 |
+| 表名                 | 说明                          |
+| ------------------- | ----------------------------- |
+| review_task         | Review 任务表                 |
+| review_file         | PR 变更文件表                 |
+| review_comment      | AI Review 建议表              |
+| model_usage_log     | 模型用量日志表                |
+| review_skill        | Review Skill 配置表（规划中）  |
+| review_skill_result | Skill 执行结果表（规划中）     |
 
 ------
 
@@ -352,9 +355,8 @@ MVP 阶段主要包括以下表：
 当前 dev 状态说明：
 
 ```text
-已实现：健康检查、PR 预览、Review 任务创建、任务列表、任务详情、文件列表、建议列表、报告详情、配置状态、模型用量监控和监控统计。
-已补齐：GitHub PR 列表、单个 PR 本地评审状态。
-待补齐：GitHub Review Markdown 后端导出。
+已实现：健康检查、PR 预览、Review 任务创建、任务列表、任务详情、文件列表、建议列表、报告详情、Markdown 导出、配置状态、模型用量监控和监控统计。
+已补齐：GitHub PR 列表、单个 PR 本地评审状态、Commit Summary 获取。
 ```
 
 ### 8.1 健康检查
@@ -393,7 +395,7 @@ GET /api/github/pulls
 
 当前状态：后端已实现，用于 PR 工作台直接选择仓库 PR 后发起评审。
 
-Query 参数：owner, repo, state, page, pageSize
+Query 参数：owner, repo, state, author, page, pageSize
 
 响应示例：
 
@@ -885,15 +887,29 @@ JSON 输出稳定性
 
 ### 12.2 上下文获取方式
 
-MVP 阶段使用轻量上下文：
+AI Review 采用两阶段 Prompt 分层设计：
+
+**文件级 Review 上下文：**
 
 ```text
 PR 标题
 PR 描述
+源分支 / 目标分支
+Commit Summary（最近 10 条 commit 摘要）
 文件路径
 文件状态
-Diff patch
+语言类型
+Diff patch（单文件最大 12000 字符，超出截断）
 新增 / 删除行数
+```
+
+**PR 级 Summary 上下文：**
+
+```text
+PR 标题 / 作者 / 描述
+源分支 / 目标分支
+Commit Summary
+文件级 Review 结果汇总（风险统计、跳过文件数、分析失败数）
 ```
 
 后续可扩展为仓库级上下文：
@@ -932,7 +948,7 @@ README
 ```text
 按文件逐个 Review
 按风险类型清单逐项检查
-对 Java、SQL、安全等场景使用专项 Prompt
+Static Rule Scanner 前置扫描（硬编码密钥/SQL 注入/System.out/console.log/空 catch）
 对高风险文件二次分析
 PR 级汇总时再次检查主要风险
 后续引入 RAG 补充上下文
@@ -944,7 +960,9 @@ PR 级汇总时再次检查主要风险
 
 Skill 是本项目的二期扩展能力，用于将不同专项 Review 能力封装为可插拔模块。
 
-示例：
+当前状态：配置表（review_skill / review_skill_result）已建立，执行逻辑规划中。
+
+示例 Skill（规划中）：
 
 | Skill                  | 说明              |
 | ---------------------- | ----------------- |
@@ -960,11 +978,11 @@ Skill 机制的作用：
 ```text
 根据文件类型选择不同 Review 策略
 根据代码语言选择不同 Prompt
-让系统从“单一 Prompt”升级为“可插拔专项评审平台”
+让系统从"单一 Prompt"升级为"可插拔专项评审平台"
 提高专业性和可扩展性
 ```
 
-MVP 阶段不强制实现完整 Skill 平台，但代码结构中可以预留接口。
+当前 MVP 已实现：Static Rule Scanner（规则扫描），可视为轻量级 Skill 雏形。
 
 ------
 
@@ -1100,16 +1118,16 @@ MVP 阶段不强制实现完整 Skill 平台，但代码结构中可以预留接
 
 1. 基于 GitHub PR 的自动化代码变更获取。
 2. 基于 Diff 的大模型代码评审。
-3. 文件级 Review 和 PR 级汇总的两阶段分析流程。
+3. 文件级 Review 和 PR 级汇总的两阶段分析流程（Prompt 分层设计）。
 4. 支持 PR 变更总结、风险识别和 Review 建议生成。
 5. 使用结构化 JSON 输出，便于解析、存储和展示。
 6. 支持风险类型、风险等级和置信度标注。
 7. 通过 Prompt 约束降低误报和模型幻觉。
 8. 采用异步任务执行，提升用户体验。
 9. 模型调用统一抽象，支持 DeepSeek、Qwen、OpenAI 等模型切换。
-10. 预留 Skill 机制，支持专项代码审查能力扩展。
-11. 后续可扩展 RAG 和 Agent，提升上下文理解能力。
-12. 可接入 GitHub Webhook 和 CI/CD，实现自动化 Review 流程。
+10. Static Rule Scanner 前置扫描，降低漏报。
+11. Commit Summary 注入，提供更有针对性的上下文。
+12. 配置表已建立，Skill 扩展规划中。
 
 ------
 
