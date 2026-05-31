@@ -11,6 +11,13 @@ spring:
     username: ${DB_USERNAME:ai_review_user}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:49.232.59.230}
+      port: ${REDIS_PORT:6380}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: ${REDIS_TIMEOUT:3000ms}
 
 mybatis-plus:
   mapper-locations: classpath:/mapper/*.xml
@@ -44,3 +51,16 @@ logging:
     org.mybatis: WARN
     com.baomidou.mybatisplus: WARN
     com.zaxxer.hikari: WARN
+
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:true}
+  create-review:
+    ip-limit: ${RATE_LIMIT_CREATE_REVIEW_IP_LIMIT:5}
+    ip-window-seconds: ${RATE_LIMIT_CREATE_REVIEW_IP_WINDOW_SECONDS:60}
+    pr-limit: ${RATE_LIMIT_CREATE_REVIEW_PR_LIMIT:1}
+    pr-window-seconds: ${RATE_LIMIT_CREATE_REVIEW_PR_WINDOW_SECONDS:30}
+  force-refresh:
+    limit: ${RATE_LIMIT_FORCE_REFRESH_LIMIT:1}
+    window-seconds: ${RATE_LIMIT_FORCE_REFRESH_WINDOW_SECONDS:300}
+
+logging:
