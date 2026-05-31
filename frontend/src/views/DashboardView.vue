@@ -15,6 +15,47 @@
       </StatTile>
     </section>
 
+    <section class="config-status-bar" v-if="configStatus">
+      <div class="status-item" :class="{ success: configStatus.githubTokenConfigured }">
+        <el-icon><Box /></el-icon>
+        <span>GitHub</span>
+        <el-tag :type="configStatus.githubTokenConfigured ? 'success' : 'info'" size="small">
+          {{ configStatus.githubTokenConfigured ? '已配置' : '未配置' }}
+        </el-tag>
+      </div>
+      <div class="status-item" :class="{ success: configStatus.aiConfigured }">
+        <el-icon><Connection /></el-icon>
+        <span>AI</span>
+        <el-tag :type="configStatus.aiConfigured ? 'success' : 'info'" size="small">
+          {{ configStatus.aiConfigured ? '已配置' : '未配置' }}
+        </el-tag>
+      </div>
+      <div class="status-item" :class="{ success: configStatus.databaseConnected }">
+        <el-icon><Coin /></el-icon>
+        <span>数据库</span>
+        <el-tag :type="configStatus.databaseConnected ? 'success' : 'danger'" size="small">
+          {{ configStatus.databaseConnected ? '已连接' : '未连接' }}
+        </el-tag>
+      </div>
+      <div class="status-item" :class="{ success: configStatus.redisConnected }">
+        <el-icon><Clock /></el-icon>
+        <span>Redis</span>
+        <el-tag :type="configStatus.redisConnected ? 'success' : 'danger'" size="small">
+          {{ configStatus.redisConnected ? '已连接' : '未连接' }}
+        </el-tag>
+      </div>
+      <div class="status-item" :class="{ success: configStatus.rateLimitEnabled }">
+        <el-icon><Filter /></el-icon>
+        <span>限流</span>
+        <el-tag :type="configStatus.rateLimitEnabled ? 'success' : 'info'" size="small">
+          {{ configStatus.rateLimitEnabled ? '已启用' : '已禁用' }}
+        </el-tag>
+      </div>
+      <el-button text type="primary" @click="emit('navigate', 'settings')" class="settings-link">
+        详细配置
+      </el-button>
+    </section>
+
     <section class="main-grid">
       <div class="workbench-panel">
         <div class="panel-header">
@@ -124,8 +165,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { CircleCheck, Coin, DataAnalysis, Link, Refresh, Search, Tickets, Warning } from '@element-plus/icons-vue'
+import { Box, CircleCheck, Clock, Coin, Connection, DataAnalysis, Filter, Link, Refresh, Search, Tickets, Warning } from '@element-plus/icons-vue'
 import { listPullRequests } from '../api/github'
+import { getConfigStatus } from '../api/config'
 import RiskLevelTag from '../components/common/RiskLevelTag.vue'
 import StatTile from '../components/common/StatTile.vue'
 import StatusTag from '../components/common/StatusTag.vue'
@@ -134,6 +176,8 @@ import { loadRecentTasks, saveRecentTask } from '../utils/recentTasks'
 import { startReviewTask } from '../utils/reviewTaskFlow'
 
 const emit = defineEmits(['open-report', 'navigate'])
+
+const configStatus = ref(null)
 
 const stateOptions = [
   { label: 'Open', value: 'open' },
@@ -166,7 +210,16 @@ const stats = computed(() => {
 
 onMounted(() => {
   recentTasks.value = loadRecentTasks()
+  loadConfigStatus()
 })
+
+async function loadConfigStatus() {
+  try {
+    configStatus.value = await getConfigStatus()
+  } catch (e) {
+    console.warn('Failed to load config status:', e)
+  }
+}
 
 async function loadPulls() {
   if (!repoForm.value.owner || !repoForm.value.repo) {
@@ -257,6 +310,40 @@ function openExternal(url) {
 .dashboard-view {
   display: grid;
   gap: 18px;
+}
+
+.config-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid #e1e7f0;
+  border-radius: 8px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #666;
+}
+
+.status-item.success {
+  background: #f0f9eb;
+  color: #67c23a;
+}
+
+.status-item .el-icon {
+  font-size: 14px;
+}
+
+.settings-link {
+  margin-left: auto;
 }
 
 .stats-grid {
