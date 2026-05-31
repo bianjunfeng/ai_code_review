@@ -60,12 +60,58 @@ public class GitHubClient {
                 .sourceBranch(root.path("head").path("ref").asText(""))
                 .targetBranch(root.path("base").path("ref").asText(""))
                 .state(root.path("state").asText("").toUpperCase(Locale.ROOT))
+                .htmlUrl(root.path("html_url").asText(""))
+                .draft(root.path("draft").asBoolean(false))
+                .createdAt(root.path("created_at").asText(""))
+                .updatedAt(root.path("updated_at").asText(""))
                 .headSha(root.path("head").path("sha").asText(""))
                 .baseSha(root.path("base").path("sha").asText(""))
                 .additions(root.path("additions").asInt(0))
                 .deletions(root.path("deletions").asInt(0))
                 .changedFiles(root.path("changed_files").asInt(0))
                 .build();
+    }
+
+    public List<GitHubPrInfo> listPullRequests(String owner, String repo, String state, int page, int pageSize) {
+        HttpUrl url = buildBaseUrl()
+                .addPathSegment("repos")
+                .addPathSegment(owner)
+                .addPathSegment(repo)
+                .addPathSegment("pulls")
+                .addQueryParameter("state", state)
+                .addQueryParameter("per_page", String.valueOf(pageSize))
+                .addQueryParameter("page", String.valueOf(page))
+                .build();
+
+        log.debug("[GitHub] 获取 PR 列表, repo={}/{}, state={}, page={}, pageSize={}", owner, repo, state, page, pageSize);
+        JsonNode root = executeForJson(url, "GitHub PR list");
+        if (!root.isArray()) {
+            throw new BusinessException(ErrorCode.GITHUB_API_ERROR, "GitHub PR 列表返回格式异常");
+        }
+
+        List<GitHubPrInfo> pullRequests = new ArrayList<>();
+        for (JsonNode node : root) {
+            pullRequests.add(GitHubPrInfo.builder()
+                    .owner(owner)
+                    .repo(repo)
+                    .pullNumber(node.path("number").asInt())
+                    .title(node.path("title").asText(""))
+                    .description(node.path("body").asText(""))
+                    .author(node.path("user").path("login").asText("unknown"))
+                    .sourceBranch(node.path("head").path("ref").asText(""))
+                    .targetBranch(node.path("base").path("ref").asText(""))
+                    .state(node.path("state").asText("").toUpperCase(Locale.ROOT))
+                    .htmlUrl(node.path("html_url").asText(""))
+                    .draft(node.path("draft").asBoolean(false))
+                    .createdAt(node.path("created_at").asText(""))
+                    .updatedAt(node.path("updated_at").asText(""))
+                    .headSha(node.path("head").path("sha").asText(""))
+                    .baseSha(node.path("base").path("sha").asText(""))
+                    .build());
+        }
+
+        log.info("[GitHub] PR 列表获取完成, repo={}/{}, count={}", owner, repo, pullRequests.size());
+        return pullRequests;
     }
 
     public List<GitHubChangedFile> getPullRequestFiles(ParsedPrUrl parsedPrUrl) {

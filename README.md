@@ -351,7 +351,8 @@ MVP 阶段主要包括以下表：
 
 ```text
 已实现：健康检查、PR 预览、Review 任务创建、任务列表、任务详情、文件列表、建议列表、报告详情、配置状态、模型用量监控和监控统计。
-待补齐：GitHub PR 列表、单个 PR 本地评审状态、GitHub Review Markdown 后端导出。
+已补齐：GitHub PR 列表、单个 PR 本地评审状态。
+待补齐：GitHub Review Markdown 后端导出。
 ```
 
 ### 8.1 健康检查
@@ -381,7 +382,7 @@ GET /api/health
 GET /api/github/pulls
 ```
 
-当前 dev 状态：前端已接入，后端尚未实现。当前可先通过 `POST /api/github/preview` 和手动 PR URL 入口完成评审主链路。
+当前状态：后端已实现，用于 PR 工作台直接选择仓库 PR 后发起评审。
 
 Query 参数：owner, repo, state, page, pageSize
 
@@ -415,7 +416,17 @@ Query 参数：owner, repo, state, page, pageSize
 
 ------
 
-### 8.3 创建 Review 任务
+### 8.3 查询单个 PR 本地评审状态
+
+```http
+GET /api/github/pulls/{owner}/{repo}/{pullNumber}/review-state
+```
+
+用于查询某个 PR 是否已有历史评审任务，以及当前 head commit 是否可复用历史成功报告。
+
+------
+
+### 8.4 创建 Review 任务
 
 ```http
 POST /api/review-tasks
@@ -447,7 +458,7 @@ POST /api/review-tasks
 
 ------
 
-### 8.4 查询 Review 任务列表
+### 8.5 查询 Review 任务列表
 
 ```http
 GET /api/review-tasks
@@ -484,7 +495,7 @@ Query 参数：page, pageSize, status, riskLevel, keyword, createdFrom, createdT
 
 ------
 
-### 8.5 查询 Review 报告
+### 8.6 查询 Review 报告
 
 ```http
 GET /api/review-tasks/{taskId}/report
@@ -514,7 +525,7 @@ GET /api/review-tasks/{taskId}/report
 
 ------
 
-### 8.6 模型用量监控
+### 8.7 模型用量监控
 
 #### 查询用量概览
 
