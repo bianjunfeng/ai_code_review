@@ -27,6 +27,12 @@ public class ReviewFile {
 
     private String patch;
 
+    private Integer originalPatchLength;
+
+    private Integer analyzedPatchLength;
+
+    private Boolean truncated;
+
     private String aiSummary;
 
     private Boolean skipped;
