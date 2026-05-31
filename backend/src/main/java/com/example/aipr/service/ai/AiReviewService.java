@@ -3,9 +3,12 @@ package com.example.aipr.service.ai;
 import com.example.aipr.common.BusinessException;
 import com.example.aipr.dto.AiReviewContext;
 import com.example.aipr.dto.FileReviewResult;
+import com.example.aipr.dto.PrSummaryResult;
 import com.example.aipr.enums.ErrorCode;
 import com.example.aipr.service.prompt.AiReviewOutputParser;
 import com.example.aipr.service.prompt.PromptRenderer;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,6 +25,7 @@ public class AiReviewService {
     private final PromptRenderer promptRenderer;
     private final AiReviewOutputParser outputParser;
     private final LlmClient llmClient;
+    private final ObjectMapper objectMapper;
 
     private static final int MAX_LOG_LENGTH = 200;
 
@@ -126,5 +130,81 @@ public class AiReviewService {
         }
 
         return false;
+    }
+
+    /**
+     * 调用 LLM 生成 PR 级别总结。
+     * 失败时返回 null，不抛出异常。
+     */
+    public PrSummaryResult summarizePr(String prTitle, String prAuthor,
+                                    String sourceBranch, String targetBranch,
+                                    String commitSummary,
+                                    List<String> fileSummaries,
+                                    int analyzedCount, int skippedCount,
+                                    int failedCount, int truncatedCount,
+                                    int criticalCount, int highCount,
+                                    int mediumCount, int lowCount,
+                                    Long taskId) {
+        String prompt = promptRenderer.renderPrSummaryPrompt(
+                prTitle, prAuthor, sourceBranch, targetBranch, commitSummary,
+                fileSummaries, analyzedCount, skippedCount, failedCount, truncatedCount,
+                criticalCount, highCount, mediumCount, lowCount);
+
+        LlmRequest llmRequest = LlmRequest.builder()
+                .messages(List.of(
+                        LlmMessage.builder()
+                                .role("user")
+                                .content(prompt)
+                                .build()
+                ))
+                .build();
+
+        LlmCallContext callContext = LlmCallContext.builder()
+                .taskId(taskId)
+                .fileId(null)
+                .skillCode(null)
+                .callType("PR_SUMMARY")
+                .build();
+
+        LlmResponse llmResponse;
+        try {
+            llmResponse = llmClient.chat(llmRequest, callContext);
+        } catch (Exception e) {
+            log.warn("[AI] PR 总结调用失败, taskId={}, error={}", taskId, e.getMessage());
+            return null;
+        }
+
+        String rawOutput = llmResponse.getContent();
+        log.info("[AI] PR 总结生成完成, taskId={}, responseLength={}", taskId, rawOutput.length());
+
+        return parsePrSummary(rawOutput);
+    }
+
+    private PrSummaryResult parsePrSummary(String rawOutput) {
+        try {
+            String cleaned = rawOutput.trim();
+            // 清理 Markdown 代码块标记
+            if (cleaned.startsWith("```")) {
+                int firstNewline = cleaned.indexOf('\n');
+                int lastBackticks = cleaned.lastIndexOf("```");
+                if (lastBackticks > firstNewline) {
+                    cleaned = cleaned.substring(firstNewline + 1, lastBackticks).trim();
+                }
+            }
+            JsonNode node = objectMapper.readTree(cleaned);
+            return PrSummaryResult.builder()
+                    .summary(nullToEmpty(node.path("summary").asText()))
+                    .finalReview(nullToEmpty(node.path("finalReview").asText()))
+                    .testSuggestions(Collections.emptyList())
+                    .build();
+        } catch (Exception e) {
+            log.warn("[AI] PR 总结 JSON 解析失败, rawOutput={}", rawOutput.length() > 200
+                    ? rawOutput.substring(0, 200) : rawOutput);
+            return null;
+        }
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 }

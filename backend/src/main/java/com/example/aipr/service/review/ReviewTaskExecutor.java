@@ -7,6 +7,7 @@ import com.example.aipr.entity.ReviewTask;
 import com.example.aipr.dto.AiReviewContext;
 import com.example.aipr.dto.FileReviewCommentResult;
 import com.example.aipr.dto.FileReviewResult;
+import com.example.aipr.dto.PrSummaryResult;
 import com.example.aipr.enums.ReviewTaskStatus;
 import com.example.aipr.mapper.ReviewCommentMapper;
 import com.example.aipr.mapper.ReviewFileMapper;
@@ -199,8 +200,50 @@ public class ReviewTaskExecutor {
                 riskSummary.criticalCount(), riskSummary.highCount(),
                 riskSummary.mediumCount(), riskSummary.lowCount(), riskSummary.infoCount());
 
-        String summary = buildSummary(files, failedFileCount);
-        String finalReview = buildFinalReview(riskSummary, failedFileCount);
+        // 文件统计
+        int analyzedCount = (int) files.stream().filter(f -> !Boolean.TRUE.equals(f.getSkipped())).count();
+        int skippedCount = (int) files.stream().filter(f -> Boolean.TRUE.equals(f.getSkipped())).count();
+        int truncatedCount = (int) files.stream().filter(f -> Boolean.TRUE.equals(f.getTruncated())).count();
+
+        // 文件级 summary 列表
+        List<String> fileSummaries = files.stream()
+                .map(ReviewFile::getAiSummary)
+                .filter(Objects::nonNull)
+                .filter(s -> !s.isBlank())
+                .filter(s -> !s.startsWith("[分析失败]"))
+                .limit(10)
+                .toList();
+
+        // 调用 LLM 生成 PR 总结，失败时回退到 buildSummary/buildFinalReview
+        String aiSummary = null;
+        String aiFinalReview = null;
+        try {
+            ReviewTask task = reviewTaskMapper.selectById(taskId);
+            if (task != null) {
+                PrSummaryResult prSummary = aiReviewService.summarizePr(
+                        task.getPrTitle(), task.getPrAuthor(),
+                        task.getSourceBranch(), task.getTargetBranch(),
+                        task.getCommitSummary(),
+                        fileSummaries, analyzedCount, skippedCount,
+                        failedFileCount, truncatedCount,
+                        riskSummary.criticalCount().intValue(),
+                        riskSummary.highCount().intValue(),
+                        riskSummary.mediumCount().intValue(),
+                        riskSummary.lowCount().intValue(),
+                        taskId);
+                if (prSummary != null) {
+                    aiSummary = prSummary.getSummary();
+                    aiFinalReview = prSummary.getFinalReview();
+                    log.info("[Executor] taskId={}, PR 总结生成成功, summary={}", taskId, aiSummary);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[Executor] taskId={}, PR 总结生成失败，使用回退逻辑: {}", taskId, e.getMessage());
+        }
+
+        // 回退：使用规则生成 summary/finalReview
+        String summary = (aiSummary != null && !aiSummary.isBlank()) ? aiSummary : buildSummary(files, failedFileCount);
+        String finalReview = (aiFinalReview != null && !aiFinalReview.isBlank()) ? aiFinalReview : buildFinalReview(riskSummary, failedFileCount);
 
         reviewTaskMapper.updateRiskScore(taskId, riskSummary.riskScore(), riskSummary.riskLevel(), summary, finalReview);
 
