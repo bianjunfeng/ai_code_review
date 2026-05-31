@@ -277,6 +277,11 @@ const traceSteps = computed(() => [
     description: '聚合 Review 建议、测试建议和最终结论'
   },
   {
+    status: 'SCORING',
+    title: '计算风险评分',
+    description: '基于 Review 建议统计风险分数与等级'
+  },
+  {
     status: 'SUCCESS',
     title: '完成',
     description: '报告已保存，可进入详情查看'
