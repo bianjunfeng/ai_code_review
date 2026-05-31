@@ -12,6 +12,8 @@
         <result column="title" property="title"/>
         <result column="description" property="description"/>
         <result column="reason" property="reason"/>
+        <result column="evidence" property="evidence"/>
+        <result column="action_level" property="actionLevel"/>
         <result column="suggestion" property="suggestion"/>
         <result column="confidence" property="confidence"/>
         <result column="need_human_check" property="needHumanCheck"/>
@@ -20,7 +22,7 @@
 
     <sql id="Base_Column_List">
         id, task_id, file_path, line_number, risk_type, risk_level,
-        title, description, reason, suggestion, confidence, need_human_check, created_at
+        title, description, reason, evidence, action_level, suggestion, confidence, need_human_check, created_at
     </sql>
 
     <select id="findByTaskId" resultMap="BaseResultMap">
@@ -56,12 +58,12 @@
 
     <insert id="insertBatch" parameterType="java.util.List">
         INSERT INTO review_comment (task_id, file_path, line_number, risk_type, risk_level,
-                                    title, description, reason, suggestion, confidence, need_human_check)
+                                    title, description, reason, evidence, action_level, suggestion, confidence, need_human_check)
         VALUES
         <foreach collection="list" item="item" separator=",">
             (#{item.taskId}, #{item.filePath}, #{item.lineNumber}, #{item.riskType},
              #{item.riskLevel}, #{item.title}, #{item.description}, #{item.reason},
-             #{item.suggestion}, #{item.confidence}, #{item.needHumanCheck})
+             #{item.evidence}, #{item.actionLevel}, #{item.suggestion}, #{item.confidence}, #{item.needHumanCheck})
         </foreach>
     </insert>
 

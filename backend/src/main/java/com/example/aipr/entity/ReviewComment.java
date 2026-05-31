@@ -28,6 +28,10 @@ public class ReviewComment {
 
     private String reason;
 
+    private String evidence;
+
+    private String actionLevel;
+
     private String suggestion;
 
     private BigDecimal confidence;

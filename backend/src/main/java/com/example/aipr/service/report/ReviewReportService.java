@@ -120,7 +120,15 @@ public class ReviewReportService {
                 }
                 if (hasText(item.getReason())) {
                     appendBlank(markdown);
-                    appendLine(markdown, "原因：" + item.getReason());
+                    appendLine(markdown, "依据：" + item.getReason());
+                }
+                if (hasText(item.getEvidence())) {
+                    appendBlank(markdown);
+                    appendLine(markdown, "证据：" + item.getEvidence());
+                }
+                if (hasText(item.getActionLevel())) {
+                    appendBlank(markdown);
+                    appendLine(markdown, "处理级别：" + item.getActionLevel());
                 }
                 if (hasText(item.getSuggestion())) {
                     appendBlank(markdown);
@@ -185,6 +193,8 @@ public class ReviewReportService {
                 .title(comment.getTitle())
                 .description(comment.getDescription())
                 .reason(comment.getReason())
+                .evidence(comment.getEvidence())
+                .actionLevel(comment.getActionLevel())
                 .suggestion(comment.getSuggestion())
                 .confidence(confidence == null ? null : confidence.doubleValue())
                 .needHumanCheck(comment.getNeedHumanCheck())

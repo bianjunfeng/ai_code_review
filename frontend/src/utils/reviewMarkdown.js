@@ -44,7 +44,13 @@ export function buildReviewMarkdown(report, comments = []) {
         lines.push('', item.description)
       }
       if (item.reason) {
-        lines.push('', `原因：${item.reason}`)
+        lines.push('', `依据：${item.reason}`)
+      }
+      if (item.evidence) {
+        lines.push('', `证据：${item.evidence}`)
+      }
+      if (item.actionLevel) {
+        lines.push('', `处理级别：${item.actionLevel}`)
       }
       if (item.suggestion) {
         lines.push('', `建议：${item.suggestion}`)

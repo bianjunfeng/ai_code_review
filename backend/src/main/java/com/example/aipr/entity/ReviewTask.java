@@ -21,6 +21,8 @@ public class ReviewTask {
 
     private String prTitle;
 
+    private String prDescription;
+
     private String prAuthor;
 
     private String sourceBranch;

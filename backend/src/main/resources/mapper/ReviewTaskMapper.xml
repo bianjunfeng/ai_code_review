@@ -9,6 +9,7 @@
         <result column="repo_name" property="repoName"/>
         <result column="pr_number" property="prNumber"/>
         <result column="pr_title" property="prTitle"/>
+        <result column="pr_description" property="prDescription"/>
         <result column="pr_author" property="prAuthor"/>
         <result column="source_branch" property="sourceBranch"/>
         <result column="target_branch" property="targetBranch"/>
@@ -29,7 +30,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, pr_url, owner_name, repo_name, pr_number, pr_title, pr_author,
+        id, pr_url, owner_name, repo_name, pr_number, pr_title, pr_description, pr_author,
         source_branch, target_branch, status, risk_score, risk_level,
         summary, final_review, result_json, error_message,
         head_sha, base_sha, model_name, prompt_version, cached_from_task_id,

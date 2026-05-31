@@ -13,12 +13,16 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Component
 public class AiReviewOutputParser {
 
     private static final int MAX_LOG_LENGTH = 200;
+    private static final String DEFAULT_REASON = "模型未返回风险依据，请人工确认";
+    private static final String DEFAULT_EVIDENCE = "模型未返回证据，请结合 diff 人工确认";
+    private static final Set<String> ALLOWED_ACTION_LEVELS = Set.of("MUST_FIX", "SHOULD_FIX", "OPTIONAL");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -95,6 +99,9 @@ public class AiReviewOutputParser {
                     .severity(Severity.INFO.name())
                     .title("代码评审建议")
                     .description("模型未返回详细描述，请人工确认")
+                    .reason(DEFAULT_REASON)
+                    .evidence(DEFAULT_EVIDENCE)
+                    .actionLevel("OPTIONAL")
                     .suggestion("建议人工复核该变更")
                     .confidence(0.5)
                     .needHumanCheck(true)
@@ -122,18 +129,18 @@ public class AiReviewOutputParser {
             builder.riskType(RiskType.MAINTAINABILITY.name());
         }
 
+        String severityValue = Severity.INFO.name();
         if (hasTextField(commentNode, "riskLevel") || hasTextField(commentNode, "severity")) {
             String severity = hasTextField(commentNode, "riskLevel")
                     ? commentNode.get("riskLevel").asText()
                     : commentNode.get("severity").asText();
             try {
-                builder.severity(Severity.valueOf(severity).name());
+                severityValue = Severity.valueOf(severity).name();
             } catch (IllegalArgumentException e) {
-                builder.severity(Severity.INFO.name());
+                severityValue = Severity.INFO.name();
             }
-        } else {
-            builder.severity(Severity.INFO.name());
         }
+        builder.severity(severityValue);
 
         if (commentNode.has("title") && !commentNode.get("title").isNull()) {
             builder.title(commentNode.get("title").asText());
@@ -146,6 +153,10 @@ public class AiReviewOutputParser {
         } else {
             builder.description("模型未返回详细描述，请人工确认");
         }
+
+        builder.reason(readTextOrDefault(commentNode, "reason", DEFAULT_REASON));
+        builder.evidence(readTextOrDefault(commentNode, "evidence", DEFAULT_EVIDENCE));
+        builder.actionLevel(parseActionLevel(commentNode, severityValue));
 
         if (commentNode.has("suggestion") && !commentNode.get("suggestion").isNull()) {
             builder.suggestion(commentNode.get("suggestion").asText());
@@ -178,7 +189,42 @@ public class AiReviewOutputParser {
     }
 
     private boolean hasTextField(JsonNode node, String fieldName) {
-        return node.has(fieldName) && !node.get(fieldName).isNull();
+        return node.has(fieldName) && !node.get(fieldName).isNull() && !node.get(fieldName).asText().isBlank();
+    }
+
+    private String readTextOrDefault(JsonNode node, String fieldName, String defaultValue) {
+        if (hasTextField(node, fieldName)) {
+            return node.get(fieldName).asText();
+        }
+        return defaultValue;
+    }
+
+    private String parseActionLevel(JsonNode node, String severity) {
+        String actionLevel = null;
+        if (hasTextField(node, "actionLevel")) {
+            actionLevel = node.get("actionLevel").asText();
+        } else if (hasTextField(node, "action_level")) {
+            actionLevel = node.get("action_level").asText();
+        }
+
+        if (actionLevel != null) {
+            actionLevel = actionLevel.trim().toUpperCase();
+            if (ALLOWED_ACTION_LEVELS.contains(actionLevel)) {
+                return actionLevel;
+            }
+        }
+
+        return defaultActionLevel(severity);
+    }
+
+    private String defaultActionLevel(String severity) {
+        if (Severity.CRITICAL.name().equals(severity) || Severity.HIGH.name().equals(severity)) {
+            return "MUST_FIX";
+        }
+        if (Severity.MEDIUM.name().equals(severity)) {
+            return "SHOULD_FIX";
+        }
+        return "OPTIONAL";
     }
 
     private String truncateForLog(String content) {

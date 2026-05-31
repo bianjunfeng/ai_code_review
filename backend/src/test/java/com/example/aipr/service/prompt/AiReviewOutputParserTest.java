@@ -24,6 +24,9 @@ class AiReviewOutputParserTest {
                       "severity": "HIGH",
                       "title": "密码明文比较",
                       "description": "当前代码直接比较明文密码",
+                      "reason": "明文比较无法抵御密码泄露后的重放风险",
+                      "evidence": "if (password.equals(user.getPassword()))",
+                      "actionLevel": "MUST_FIX",
                       "suggestion": "建议使用 BCryptPasswordEncoder",
                       "confidence": 0.92,
                       "needHumanCheck": true
@@ -39,6 +42,9 @@ class AiReviewOutputParserTest {
         assertEquals(1, result.getComments().size());
         assertEquals("SECURITY_RISK", result.getComments().get(0).getRiskType());
         assertEquals("HIGH", result.getComments().get(0).getSeverity());
+        assertEquals("明文比较无法抵御密码泄露后的重放风险", result.getComments().get(0).getReason());
+        assertEquals("if (password.equals(user.getPassword()))", result.getComments().get(0).getEvidence());
+        assertEquals("MUST_FIX", result.getComments().get(0).getActionLevel());
         assertEquals(0.92, result.getComments().get(0).getConfidence());
     }
 
@@ -233,6 +239,73 @@ class AiReviewOutputParserTest {
         FileReviewResult result = parser.parseFileReview(rawOutput);
 
         assertEquals("模型未返回详细描述，请人工确认", result.getComments().get(0).getDescription());
+    }
+
+    @Test
+    void parseFileReview_missingEvidenceFields_defaultsWithoutBreakingOldFormat() {
+        String rawOutput = """
+                {
+                  "filePath": "Legacy.java",
+                  "summary": "Legacy output",
+                  "comments": [
+                    {
+                      "riskType": "BUG_RISK",
+                      "severity": "MEDIUM",
+                      "title": "Legacy"
+                    }
+                  ]
+                }
+                """;
+
+        FileReviewResult result = parser.parseFileReview(rawOutput);
+
+        assertEquals("模型未返回风险依据，请人工确认", result.getComments().get(0).getReason());
+        assertEquals("模型未返回证据，请结合 diff 人工确认", result.getComments().get(0).getEvidence());
+        assertEquals("SHOULD_FIX", result.getComments().get(0).getActionLevel());
+    }
+
+    @Test
+    void parseFileReview_invalidActionLevel_defaultsBySeverity() {
+        String rawOutput = """
+                {
+                  "filePath": "Action.java",
+                  "summary": "Action",
+                  "comments": [
+                    {
+                      "riskType": "SECURITY_RISK",
+                      "severity": "HIGH",
+                      "title": "Action",
+                      "actionLevel": "BLOCKER"
+                    }
+                  ]
+                }
+                """;
+
+        FileReviewResult result = parser.parseFileReview(rawOutput);
+
+        assertEquals("MUST_FIX", result.getComments().get(0).getActionLevel());
+    }
+
+    @Test
+    void parseFileReview_snakeCaseActionLevel_supported() {
+        String rawOutput = """
+                {
+                  "filePath": "Action.java",
+                  "summary": "Action",
+                  "comments": [
+                    {
+                      "riskType": "STYLE",
+                      "severity": "LOW",
+                      "title": "Action",
+                      "action_level": "optional"
+                    }
+                  ]
+                }
+                """;
+
+        FileReviewResult result = parser.parseFileReview(rawOutput);
+
+        assertEquals("OPTIONAL", result.getComments().get(0).getActionLevel());
     }
 
     @Test

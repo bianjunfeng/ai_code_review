@@ -272,6 +272,7 @@ public class ReviewTaskService {
         task.setRepoName(parsedPrUrl.repo());
         task.setPrNumber(parsedPrUrl.pullNumber());
         task.setPrTitle(prInfo.getTitle());
+        task.setPrDescription(prInfo.getDescription());
         task.setPrAuthor(prInfo.getAuthor());
         task.setSourceBranch(prInfo.getSourceBranch());
         task.setTargetBranch(prInfo.getTargetBranch());
@@ -295,6 +296,7 @@ public class ReviewTaskService {
         task.setRepoName(parsedPrUrl.repo());
         task.setPrNumber(parsedPrUrl.pullNumber());
         task.setPrTitle(cachedTask.getPrTitle()); // 使用缓存任务的 PR 标题
+        task.setPrDescription(cachedTask.getPrDescription() != null ? cachedTask.getPrDescription() : prInfo.getDescription());
         task.setPrAuthor(cachedTask.getPrAuthor());
         task.setSourceBranch(prInfo.getSourceBranch());
         task.setTargetBranch(prInfo.getTargetBranch());
@@ -475,6 +477,8 @@ public class ReviewTaskService {
                 .title(comment.getTitle())
                 .description(comment.getDescription())
                 .reason(comment.getReason())
+                .evidence(comment.getEvidence())
+                .actionLevel(comment.getActionLevel())
                 .suggestion(comment.getSuggestion())
                 .confidence(confidence == null ? null : confidence.doubleValue())
                 .needHumanCheck(comment.getNeedHumanCheck())

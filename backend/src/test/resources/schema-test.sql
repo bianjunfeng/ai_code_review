@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS model_usage_log;
 DROP TABLE IF EXISTS review_skill_result;
 DROP TABLE IF EXISTS review_skill;
 DROP TABLE IF EXISTS review_comment;
@@ -11,6 +12,7 @@ CREATE TABLE review_task (
     repo_name VARCHAR(150),
     pr_number INT,
     pr_title VARCHAR(500),
+    pr_description CLOB,
     pr_author VARCHAR(100),
     source_branch VARCHAR(200),
     target_branch VARCHAR(200),
@@ -66,6 +68,8 @@ CREATE TABLE review_comment (
     title VARCHAR(300),
     description CLOB,
     reason CLOB,
+    evidence CLOB,
+    action_level VARCHAR(20) DEFAULT 'OPTIONAL',
     suggestion CLOB,
     confidence DECIMAL(4, 2),
     need_human_check TINYINT NOT NULL DEFAULT 0,

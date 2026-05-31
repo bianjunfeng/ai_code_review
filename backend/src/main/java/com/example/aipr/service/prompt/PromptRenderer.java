@@ -61,6 +61,9 @@ public class PromptRenderer {
         prompt.append("      \"riskLevel\": \"CRITICAL|HIGH|MEDIUM|LOW|INFO\",\n");
         prompt.append("      \"title\": \"风险项标题\",\n");
         prompt.append("      \"description\": \"详细描述\",\n");
+        prompt.append("      \"reason\": \"为什么这是风险，需基于 PR 上下文和 diff 给出依据\",\n");
+        prompt.append("      \"evidence\": \"来自 diff 的关键代码片段或变更证据，避免过长\",\n");
+        prompt.append("      \"actionLevel\": \"MUST_FIX|SHOULD_FIX|OPTIONAL\",\n");
         prompt.append("      \"suggestion\": \"建议\",\n");
         prompt.append("      \"confidence\": 0.0-1.0 之间的数字,\n");
         prompt.append("      \"needHumanCheck\": true 或 false\n");
@@ -71,9 +74,12 @@ public class PromptRenderer {
         prompt.append("1. 只基于提供的 PR 信息和 diff 分析，不要编造未提供的业务背景。\n");
         prompt.append("2. 不确定时设置 needHumanCheck=true。\n");
         prompt.append("3. 每条建议必须包含 confidence。\n");
-        prompt.append("4. 不要输出泛泛而谈的建议，要具体指出问题所在。\n");
-        prompt.append("5. 如果没有问题，comments 可以为空数组。\n");
-        prompt.append("6. 只输出合法 JSON，不要输出 Markdown 代码块。\n");
+        prompt.append("4. 每条建议必须包含 reason、evidence、actionLevel。\n");
+        prompt.append("5. evidence 必须来自提供的 diff 或 PR 上下文，无法给出证据时不要输出高置信度风险。\n");
+        prompt.append("6. actionLevel 只能是 MUST_FIX、SHOULD_FIX、OPTIONAL。\n");
+        prompt.append("7. 不要输出泛泛而谈的建议，要具体指出问题所在。\n");
+        prompt.append("8. 如果没有问题，comments 可以为空数组。\n");
+        prompt.append("9. 只输出合法 JSON，不要输出 Markdown 代码块。\n");
 
         return prompt.toString();
     }

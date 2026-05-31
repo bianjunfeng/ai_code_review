@@ -7,6 +7,9 @@
         <el-tag v-if="item.confidence != null" type="info" effect="plain">
           置信度 {{ formatConfidence(item.confidence) }}
         </el-tag>
+        <el-tag v-if="item.actionLevel" type="warning" effect="plain">
+          处理级别 {{ formatActionLevel(item.actionLevel) }}
+        </el-tag>
       </div>
       <el-button :icon="CopyDocument" plain @click="copyComment">复制评论</el-button>
     </div>
@@ -20,8 +23,18 @@
       </section>
 
       <section v-if="item.reason">
-        <h4>原因分析</h4>
+        <h4>依据</h4>
         <p>{{ item.reason }}</p>
+      </section>
+
+      <section v-if="item.evidence">
+        <h4>证据</h4>
+        <p>{{ item.evidence }}</p>
+      </section>
+
+      <section v-if="item.actionLevel">
+        <h4>处理级别</h4>
+        <p>{{ formatActionLevel(item.actionLevel) }}</p>
       </section>
 
       <section>
@@ -76,10 +89,27 @@ function formatConfidence(value) {
   return Math.round(num * 100) + '%'
 }
 
+function formatActionLevel(value) {
+  const actionLevel = String(value || '').toUpperCase()
+  const labels = {
+    MUST_FIX: 'MUST_FIX',
+    SHOULD_FIX: 'SHOULD_FIX',
+    OPTIONAL: 'OPTIONAL'
+  }
+  return labels[actionLevel] || actionLevel || 'OPTIONAL'
+}
+
 async function copyComment() {
   let text = props.item.comment
   if (!text) {
-    const parts = [props.item.title, props.item.description, props.item.suggestion].filter(Boolean)
+    const parts = [
+      props.item.title,
+      props.item.description,
+      props.item.reason ? `依据：${props.item.reason}` : '',
+      props.item.evidence ? `证据：${props.item.evidence}` : '',
+      props.item.actionLevel ? `处理级别：${formatActionLevel(props.item.actionLevel)}` : '',
+      props.item.suggestion
+    ].filter(Boolean)
     text = parts.join('\n\n')
   }
 
