@@ -101,7 +101,7 @@ public class OpenAiCompatibleClient implements LlmClient {
             log.setCallType(context.getCallType());
         }
         log.setModelName(modelName);
-        log.setProvider(aiProperties.getBaseUrl() != null ? aiProperties.getBaseUrl() : "deepseek");
+        log.setProvider("deepseek");
         log.setSuccess(true);
         log.setCreatedAt(LocalDateTime.now());
         return log;

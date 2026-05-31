@@ -33,7 +33,6 @@ public class ModelUsageLog {
 
     private Boolean success = true;
 
-    @TableField(update = "NOW()")
     private String errorMessage;
 
     private java.math.BigDecimal estimatedCost;
