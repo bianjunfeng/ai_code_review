@@ -70,11 +70,13 @@ public class ReviewTaskService {
                 ReviewTask cachedTask = findCachedTask(parsedPrUrl, prInfo);
                 if (cachedTask != null) {
                     log.info("[Task] 缓存命中, cachedTaskId={}, riskScore={}, riskLevel={}", cachedTask.getId(), cachedTask.getRiskScore(), cachedTask.getRiskLevel());
+                    // 创建新的缓存命中记录，而不是直接返回原任务
+                    ReviewTask cacheHitTask = createCacheHitTask(cachedTask, parsedPrUrl, prInfo);
                     return ReviewTaskCreatedVO.builder()
-                            .taskId(cachedTask.getId())
-                            .status(cachedTask.getStatus())
+                            .taskId(cacheHitTask.getId())
+                            .status(cacheHitTask.getStatus())
                             .cached(true)
-                            .cachedFromTaskId(cachedTask.getCachedFromTaskId())
+                            .cachedFromTaskId(cachedTask.getId())
                             .build();
                 }
             }
@@ -283,6 +285,37 @@ public class ReviewTaskService {
 
         reviewTaskMapper.insert(task);
 
+        return task;
+    }
+
+    private ReviewTask createCacheHitTask(ReviewTask cachedTask, ParsedPrUrl parsedPrUrl, GitHubPrInfo prInfo) {
+        ReviewTask task = new ReviewTask();
+        task.setPrUrl(cachedTask.getPrUrl());
+        task.setOwnerName(parsedPrUrl.owner());
+        task.setRepoName(parsedPrUrl.repo());
+        task.setPrNumber(parsedPrUrl.pullNumber());
+        task.setPrTitle(cachedTask.getPrTitle()); // 使用缓存任务的 PR 标题
+        task.setPrAuthor(cachedTask.getPrAuthor());
+        task.setSourceBranch(prInfo.getSourceBranch());
+        task.setTargetBranch(prInfo.getTargetBranch());
+        task.setHeadSha(prInfo.getHeadSha());
+        task.setBaseSha(prInfo.getBaseSha());
+        task.setModelName(aiProperties.getModelName());
+        task.setPromptVersion(aiProperties.getPromptVersion());
+        task.setStatus(ReviewTaskStatus.SUCCESS.name()); // 缓存命中直接标记为成功
+        task.setCachedFromTaskId(cachedTask.getId()); // 指向原始缓存任务
+        // 复制报告摘要字段
+        task.setRiskScore(cachedTask.getRiskScore());
+        task.setRiskLevel(cachedTask.getRiskLevel());
+        task.setSummary(cachedTask.getSummary());
+        task.setFinalReview(cachedTask.getFinalReview());
+        task.setResultJson(cachedTask.getResultJson());
+        task.setCreatedAt(LocalDateTime.now());
+        task.setUpdatedAt(LocalDateTime.now());
+
+        reviewTaskMapper.insert(task);
+
+        log.info("[Task] 缓存命中记录已创建, newTaskId={}, cachedFromTaskId={}", task.getId(), cachedTask.getId());
         return task;
     }
 
