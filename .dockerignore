@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+.claude
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend
+frontend/node_modules
+frontend/dist
+
+# Backend
+backend/target
+backend/.idea
+
+# Docs
+docs
+selfprompt
+
+# Env (sensitive)
+.env
+
+# Misc
+*.md
+LICENSE
+AGENTS.md
