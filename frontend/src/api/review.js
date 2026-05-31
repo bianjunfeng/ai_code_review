@@ -96,3 +96,8 @@ export async function getReviewMarkdown(taskId) {
   const response = await http.get(`/api/review-tasks/${taskId}/review-markdown`)
   return unwrapResult(response.data)
 }
+
+export async function getTaskModelUsage(taskId) {
+  const response = await http.get(`/api/model-usage/tasks/${taskId}`)
+  return unwrapResult(response.data)
+}

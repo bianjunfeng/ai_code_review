@@ -92,6 +92,40 @@
             <el-step v-for="step in traceSteps" :key="step.status" :title="step.title" :description="step.description" />
           </el-steps>
         </el-tab-pane>
+
+        <el-tab-pane label="模型用量" name="usage">
+          <div v-if="modelUsage" class="usage-grid">
+            <div class="usage-card">
+              <div class="usage-label">调用次数</div>
+              <div class="usage-value">{{ modelUsage.totalCalls }}</div>
+            </div>
+            <div class="usage-card success">
+              <div class="usage-label">成功</div>
+              <div class="usage-value">{{ modelUsage.successCalls }}</div>
+            </div>
+            <div class="usage-card danger">
+              <div class="usage-label">失败</div>
+              <div class="usage-value">{{ modelUsage.failedCalls }}</div>
+            </div>
+            <div class="usage-card">
+              <div class="usage-label">Prompt Tokens</div>
+              <div class="usage-value">{{ modelUsage.totalPromptTokens }}</div>
+            </div>
+            <div class="usage-card">
+              <div class="usage-label">Completion Tokens</div>
+              <div class="usage-value">{{ modelUsage.totalCompletionTokens }}</div>
+            </div>
+            <div class="usage-card">
+              <div class="usage-label">总 Tokens</div>
+              <div class="usage-value">{{ modelUsage.totalTokens }}</div>
+            </div>
+            <div class="usage-card">
+              <div class="usage-label">平均延迟</div>
+              <div class="usage-value">{{ modelUsage.avgLatencyMs }}ms</div>
+            </div>
+          </div>
+          <el-empty v-else description="暂无模型用量数据" />
+        </el-tab-pane>
       </el-tabs>
     </section>
   </div>
@@ -101,7 +135,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, CopyDocument, Link, Refresh } from '@element-plus/icons-vue'
-import { getReviewComments, getReviewFiles, getReviewMarkdown, getReviewReport, getReviewTask } from '../api/review'
+import { getReviewComments, getReviewFiles, getReviewMarkdown, getReviewReport, getReviewTask, getTaskModelUsage } from '../api/review'
 import FinalReviewCard from '../components/FinalReviewCard.vue'
 import PrInfoCard from '../components/PrInfoCard.vue'
 import RiskItemCard from '../components/RiskItemCard.vue'
@@ -129,6 +163,7 @@ const files = ref([])
 const comments = ref([])
 const activeTab = ref('overview')
 const riskFilter = ref('')
+const modelUsage = ref(null)
 
 const prUrl = computed(() => report.value?.prInfo?.url || task.value?.prUrl || '')
 
@@ -224,6 +259,7 @@ async function loadReport() {
     files.value = await getReviewFiles(props.taskId).catch(() => [])
     comments.value = await getReviewComments(props.taskId).catch(() => [])
     report.value = await getReviewReport(props.taskId).catch(() => null)
+    modelUsage.value = await getTaskModelUsage(props.taskId).catch(() => null)
 
     saveRecentTask({
       ...task.value,
@@ -380,6 +416,42 @@ h2 {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 14px;
+}
+
+.usage-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.usage-card {
+  padding: 16px;
+  background: #fbfcfe;
+  border: 1px solid #e5ebf4;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.usage-card.success {
+  background: #f0f9eb;
+  border-color: #e1f3d8;
+}
+
+.usage-card.danger {
+  background: #fef0f0;
+  border-color: #fde2e2;
+}
+
+.usage-label {
+  color: #69788d;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.usage-value {
+  color: #172033;
+  font-size: 24px;
+  font-weight: 700;
 }
 
 @media (max-width: 920px) {
