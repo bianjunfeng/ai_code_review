@@ -1,28 +1,28 @@
-package com.example.aipr.service.github;
+package com.example.aipr.vo;
 
 import lombok.Builder;
 import lombok.Data;
 
 @Data
 @Builder
-public class GitHubPrInfo {
+public class GitHubPullRequestVO {
 
     private String owner;
     private String repo;
     private Integer pullNumber;
     private String title;
-    private String description;
     private String author;
+    private String state;
     private String sourceBranch;
     private String targetBranch;
-    private String state;
     private String htmlUrl;
-    private Boolean draft;
     private String createdAt;
     private String updatedAt;
-    private Integer additions;
-    private Integer deletions;
-    private Integer changedFiles;
-    private String headSha;
-    private String baseSha;
+    private Boolean draft;
+    private Boolean reviewed;
+    private Long latestTaskId;
+    private String latestTaskStatus;
+    private String latestRiskLevel;
+    private Integer latestRiskScore;
+    private Boolean cachedAvailable;
 }
