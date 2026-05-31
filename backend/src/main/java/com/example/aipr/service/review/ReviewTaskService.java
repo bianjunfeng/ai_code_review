@@ -14,6 +14,7 @@ import com.example.aipr.mapper.ReviewFileMapper;
 import com.example.aipr.mapper.ReviewTaskMapper;
 import com.example.aipr.service.github.GitHubChangedFile;
 import com.example.aipr.service.github.GitHubClient;
+import com.example.aipr.service.github.GitHubCommitInfo;
 import com.example.aipr.service.github.GitHubPrInfo;
 import com.example.aipr.service.github.ParsedPrUrl;
 import com.example.aipr.service.github.PrUrlParser;
@@ -284,9 +285,33 @@ public class ReviewTaskService {
         task.setCreatedAt(LocalDateTime.now());
         task.setUpdatedAt(LocalDateTime.now());
 
+        // 获取 commit 摘要，GitHub API 异常时设为空字符串
+        String commitSummary = fetchCommitSummary(parsedPrUrl);
+        task.setCommitSummary(commitSummary);
+
         reviewTaskMapper.insert(task);
 
         return task;
+    }
+
+    /**
+     * 获取 PR commit 摘要，失败时返回空字符串。
+     */
+    private String fetchCommitSummary(ParsedPrUrl parsedPrUrl) {
+        try {
+            List<GitHubCommitInfo> commits = gitHubClient.getPullRequestCommits(parsedPrUrl);
+            if (commits == null || commits.isEmpty()) {
+                return "";
+            }
+            return commits.stream()
+                    .map(GitHubCommitInfo::getMessage)
+                    .filter(m -> m != null && !m.isBlank())
+                    .limit(10)
+                    .collect(java.util.stream.Collectors.joining("; "));
+        } catch (Exception e) {
+            log.warn("[Task] 获取 commit 摘要失败，使用空摘要: {}", e.getMessage());
+            return "";
+        }
     }
 
     private ReviewTask createCacheHitTask(ReviewTask cachedTask, ParsedPrUrl parsedPrUrl, GitHubPrInfo prInfo) {

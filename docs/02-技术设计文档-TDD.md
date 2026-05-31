@@ -419,7 +419,8 @@ GET /repos/{owner}/{repo}/pulls/{pull_number}
 7. additions
 8. deletions
 9. changed_files
-10. commits
+10. head.sha
+11. base.sha
 
 ### 获取 PR 变更文件
 
@@ -437,6 +438,21 @@ GET /repos/{owner}/{repo}/pulls/{pull_number}/files
 6. patch
 7. raw_url
 8. blob_url
+
+### 获取 PR Commits
+
+```http
+GET /repos/{owner}/{repo}/pulls/{pull_number}/commits
+```
+
+需要字段：
+
+1. sha
+2. commit.message（只取第一行作为摘要）
+3. author.login（优先）或 commit.author.name
+4. commit.author.date
+
+MVP 阶段最多取前 10 条 commit，以 `"; "` 分隔后存入 `review_task.commit_summary`。GitHub API 异常时该字段为空字符串，不阻塞任务创建。
 
 ## 7.3 private 仓库访问
 

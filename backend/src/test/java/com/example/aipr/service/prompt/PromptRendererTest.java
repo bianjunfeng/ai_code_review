@@ -101,6 +101,68 @@ class PromptRendererTest {
     }
 
     @Test
+    void renderFileReviewPrompt_containsCommitSummary() {
+        AiReviewContext context = AiReviewContext.builder()
+                .prTitle("Test PR")
+                .prDescription("test desc")
+                .prAuthor("testuser")
+                .sourceBranch("feature/test")
+                .targetBranch("main")
+                .commitSummary("feat: add login; fix: correct validation logic; refactor: simplify token handling")
+                .filePath("src/AuthService.java")
+                .fileStatus("modified")
+                .language("Java")
+                .additions(20)
+                .deletions(5)
+                .patch("+ new code")
+                .build();
+
+        String prompt = promptRenderer.renderFileReviewPrompt(context);
+
+        assertTrue(prompt.contains("PR 提交记录："));
+        assertTrue(prompt.contains("feat: add login"));
+        assertTrue(prompt.contains("fix: correct validation logic"));
+        assertTrue(prompt.contains("refactor: simplify token handling"));
+    }
+
+    @Test
+    void renderFileReviewPrompt_emptyCommitSummaryShowsNothing() {
+        AiReviewContext context = AiReviewContext.builder()
+                .prTitle("Test PR")
+                .prDescription("test desc")
+                .sourceBranch("feature/test")
+                .targetBranch("main")
+                .commitSummary("")
+                .filePath("src/AuthService.java")
+                .fileStatus("modified")
+                .language("Java")
+                .patch("+ new code")
+                .build();
+
+        String prompt = promptRenderer.renderFileReviewPrompt(context);
+
+        assertFalse(prompt.contains("PR 提交记录："));
+    }
+
+    @Test
+    void renderFileReviewPrompt_nullCommitSummaryShowsNothing() {
+        AiReviewContext context = AiReviewContext.builder()
+                .prTitle("Test PR")
+                .sourceBranch("feature/test")
+                .targetBranch("main")
+                .commitSummary(null)
+                .filePath("src/AuthService.java")
+                .fileStatus("modified")
+                .language("Java")
+                .patch("+ new code")
+                .build();
+
+        String prompt = promptRenderer.renderFileReviewPrompt(context);
+
+        assertFalse(prompt.contains("PR 提交记录："));
+    }
+
+    @Test
     void renderFileReviewPrompt_emptyPatchShowsNotice() {
         AiReviewContext context = AiReviewContext.builder()
                 .prTitle("Test PR")

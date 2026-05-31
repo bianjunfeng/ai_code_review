@@ -50,6 +50,12 @@ public class ReviewTask {
     private String promptVersion;
     private Long cachedFromTaskId;
 
+    /**
+     * Commit 摘要，最多 10 条，以 "; " 分隔。
+     * GitHub API 异常时为空字符串。
+     */
+    private String commitSummary;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 

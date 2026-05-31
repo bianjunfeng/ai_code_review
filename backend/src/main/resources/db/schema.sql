@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS review_task (
                                            model_name VARCHAR(100) DEFAULT NULL COMMENT '执行评审使用的模型名称',
                                            prompt_version VARCHAR(50) DEFAULT 'v1' COMMENT 'Prompt版本',
                                            cached_from_task_id BIGINT DEFAULT NULL COMMENT '命中缓存时关联的历史任务ID',
+                                           commit_summary VARCHAR(1000) DEFAULT NULL COMMENT 'Commit摘要，最多10条，以"; "分隔，GitHub API异常时为空',
                                            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                                            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
                                            INDEX idx_pr_url (pr_url),

@@ -30,6 +30,12 @@ public class PromptRenderer {
         prompt.append("源分支：").append(context.getSourceBranch() != null ? context.getSourceBranch() : "未指定").append("\n");
         prompt.append("目标分支：").append(context.getTargetBranch() != null ? context.getTargetBranch() : "未指定").append("\n");
 
+        // 注入 commit 摘要
+        String commitSummary = context.getCommitSummary();
+        if (commitSummary != null && !commitSummary.isBlank()) {
+            prompt.append("PR 提交记录：").append(commitSummary).append("\n");
+        }
+
         prompt.append("\n=== 待评审文件 ===\n");
         prompt.append("文件路径：").append(context.getFilePath() != null ? context.getFilePath() : "").append("\n");
         prompt.append("文件状态：").append(context.getFileStatus() != null ? context.getFileStatus() : "").append("\n");

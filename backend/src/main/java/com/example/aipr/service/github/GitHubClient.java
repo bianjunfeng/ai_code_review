@@ -166,6 +166,64 @@ public class GitHubClient {
         return files;
     }
 
+    /**
+     * 获取 PR 的 commit 列表（最多 10 条）.
+     */
+    public List<GitHubCommitInfo> getPullRequestCommits(ParsedPrUrl parsedPrUrl) {
+        List<GitHubCommitInfo> commits = new ArrayList<>();
+        int page = 1;
+
+        log.debug("[GitHub] 获取 PR commits, repo={}/{} PR#{}", parsedPrUrl.owner(), parsedPrUrl.repo(), parsedPrUrl.pullNumber());
+
+        while (commits.size() < 10) {
+            HttpUrl url = buildBaseUrl()
+                    .addPathSegment("repos")
+                    .addPathSegment(parsedPrUrl.owner())
+                    .addPathSegment(parsedPrUrl.repo())
+                    .addPathSegment("pulls")
+                    .addPathSegment(String.valueOf(parsedPrUrl.pullNumber()))
+                    .addPathSegment("commits")
+                    .addQueryParameter("per_page", String.valueOf(PAGE_SIZE))
+                    .addQueryParameter("page", String.valueOf(page))
+                    .build();
+
+            JsonNode root = executeForJson(url, "GitHub PR commits");
+            if (!root.isArray()) {
+                throw new BusinessException(ErrorCode.GITHUB_API_ERROR, "GitHub commits 返回格式异常");
+            }
+
+            for (JsonNode commitNode : root) {
+                if (commits.size() >= 10) {
+                    break;
+                }
+                String sha = commitNode.path("sha").asText("");
+                String message = commitNode.path("commit").path("message").asText("");
+                String author = commitNode.path("author").path("login").asText(
+                        commitNode.path("commit").path("author").path("name").asText("unknown")
+                );
+                String date = commitNode.path("commit").path("author").path("date").asText("");
+
+                // 只取第一行作为摘要
+                String firstLine = message.isEmpty() ? "" : message.split("\n")[0];
+
+                commits.add(GitHubCommitInfo.builder()
+                        .sha(sha)
+                        .message(firstLine)
+                        .author(author)
+                        .date(date)
+                        .build());
+            }
+
+            if (root.size() < PAGE_SIZE) {
+                break;
+            }
+            page += 1;
+        }
+
+        log.info("[GitHub] PR commits 获取完成, repo={}/{} PR#{} commitCount={}", parsedPrUrl.owner(), parsedPrUrl.repo(), parsedPrUrl.pullNumber(), commits.size());
+        return commits;
+    }
+
     private HttpUrl.Builder buildBaseUrl() {
         HttpUrl baseUrl = HttpUrl.parse(gitHubProperties.getApiBaseUrl());
         if (baseUrl == null) {
