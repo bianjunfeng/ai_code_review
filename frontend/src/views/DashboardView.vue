@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard-view">
     <section class="stats-grid">
-      <StatTile label="本地最近任务" :value="stats.total" hint="来自当前浏览器缓存">
+      <StatTile label="总任务数" :value="stats.total" hint="从数据库查询的任务总数">
         <template #icon><Tickets /></template>
       </StatTile>
       <StatTile label="成功报告" :value="stats.success" hint="可直接进入报告详情">
@@ -135,7 +135,7 @@
         <div class="panel-header compact">
           <div>
             <h2>最近任务</h2>
-            <p>任务中心接口未完成时，先展示本地最近任务。</p>
+            <p>从本地存储读取的最近任务记录。</p>
           </div>
           <el-button text type="primary" @click="emit('navigate', 'tasks')">全部</el-button>
         </div>

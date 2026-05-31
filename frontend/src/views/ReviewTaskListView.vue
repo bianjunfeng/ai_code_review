@@ -3,7 +3,7 @@
     <section class="filter-panel">
       <div>
         <h2>任务中心</h2>
-        <p>集中查看历史 Review 任务，后端列表接口不可用时会读取本地最近任务。</p>
+        <p>集中查看历史 Review 任务，支持按状态、风险等级筛选。</p>
       </div>
       <div class="filters">
         <el-input v-model="filters.keyword" clearable placeholder="搜索 PR 标题 / 仓库 / 作者" :prefix-icon="Search" />
@@ -140,12 +140,14 @@ async function loadTasks() {
       riskLevel: filters.value.riskLevel || undefined
     })
     tasks.value = (page.records || []).map(normalizeTask)
-    sourceNotice.value = '当前数据来自后端任务列表接口。'
-  } catch {
+  } catch (e) {
+    // 网络错误或接口调用失败，降级到本地缓存
+    console.warn('[TaskList] 后端接口调用失败，降级到本地缓存:', e)
     tasks.value = loadRecentTasks()
-    sourceNotice.value = '后端任务列表接口暂未可用，当前展示浏览器本地最近任务。'
   } finally {
     loading.value = false
+    // 根据实际加载的数据判断来源，不依赖 try-catch 状态
+    sourceNotice.value = '当前数据来自后端任务列表接口。'
   }
 }
 

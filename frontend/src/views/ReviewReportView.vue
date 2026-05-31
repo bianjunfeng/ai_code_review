@@ -28,7 +28,6 @@
       :title="task.errorMessage || '任务执行失败'"
     />
 
-    <!-- P0 缓存命中提示 -->
     <el-alert
       v-if="task?.cached"
       type="success"
@@ -45,7 +44,6 @@
       :title="diffLimitNotice"
     />
 
-    <!-- P0 进度横幅：非终态时展示轮询进度 -->
     <div v-if="isPollingStatus(task?.status)" class="progress-banner">
       <div class="progress-top">
         <el-icon class="is-loading"><Loading /></el-icon>
@@ -214,7 +212,7 @@ const activeTab = ref('overview')
 const riskFilter = ref('')
 const modelUsage = ref(null)
 
-// ── P0 轮询：每隔 2s 查询任务进度，非终态自动更新 ──
+// 轮询：每隔 2s 查询任务进度，非终态自动更新
 const POLL_INTERVAL_MS = 2000
 const POLLING_STATUSES = ['PENDING', 'FETCHING_PR', 'PARSING_DIFF', 'REVIEWING', 'SUMMARIZING', 'SCORING']
 let pollTimer = null
@@ -389,7 +387,7 @@ async function loadReport() {
   loading.value = true
   try {
     task.value = await getReviewTask(props.taskId)
-    // ── P0：非终态则启动轮询，不阻塞页面 ──
+    // 非终态则启动轮询，不阻塞页面
     if (isPollingStatus(task.value?.status)) {
       startPolling()
       loading.value = false
