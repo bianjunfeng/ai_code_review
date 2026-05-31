@@ -8,20 +8,26 @@ CREATE TABLE IF NOT EXISTS review_task (
                                            pr_author VARCHAR(100) DEFAULT NULL COMMENT 'PR作者',
                                            source_branch VARCHAR(200) DEFAULT NULL COMMENT '源分支',
                                            target_branch VARCHAR(200) DEFAULT NULL COMMENT '目标分支',
-                                           status VARCHAR(30) NOT NULL DEFAULT 'PENDING' COMMENT '任务状态：PENDING/FETCHING_PR/PARSING_DIFF/REVIEWING/SUMMARIZING/SUCCESS/FAILED/CANCELLED',
+                                           status VARCHAR(30) NOT NULL DEFAULT 'PENDING' COMMENT '任务状态：PENDING/FETCHING_PR/PARSING_DIFF/REVIEWING/SUMMARIZING/SCORING/SUCCESS/FAILED/CANCELLED',
                                            risk_score INT DEFAULT NULL COMMENT '风险评分，范围0到100',
-                                           risk_level VARCHAR(20) DEFAULT NULL COMMENT '风险等级：LOW/MEDIUM/HIGH',
+                                           risk_level VARCHAR(20) DEFAULT NULL COMMENT '风险等级：LOW/MEDIUM/HIGH/CRITICAL',
                                            summary TEXT DEFAULT NULL COMMENT 'PR总结',
                                            final_review TEXT DEFAULT NULL COMMENT '最终Review结论',
                                            result_json LONGTEXT DEFAULT NULL COMMENT '完整AI Review结果JSON',
                                            error_message TEXT DEFAULT NULL COMMENT '任务失败原因',
+                                           head_sha VARCHAR(64) DEFAULT NULL COMMENT 'PR head commit sha，用于缓存命中判断',
+                                           base_sha VARCHAR(64) DEFAULT NULL COMMENT 'PR base commit sha',
+                                           model_name VARCHAR(100) DEFAULT NULL COMMENT '执行评审使用的模型名称',
+                                           prompt_version VARCHAR(50) DEFAULT 'v1' COMMENT 'Prompt版本',
+                                           cached_from_task_id BIGINT DEFAULT NULL COMMENT '命中缓存时关联的历史任务ID',
                                            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                                            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
                                            INDEX idx_pr_url (pr_url),
                                            INDEX idx_repo_pr (owner_name, repo_name, pr_number),
                                            INDEX idx_created_at (created_at),
                                            INDEX idx_risk_level (risk_level),
-                                           INDEX idx_status (status)
+                                           INDEX idx_status (status),
+                                           INDEX idx_review_cache (owner_name, repo_name, pr_number, head_sha, model_name, prompt_version, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='PR分析任务表';
 
 CREATE TABLE IF NOT EXISTS review_comment (

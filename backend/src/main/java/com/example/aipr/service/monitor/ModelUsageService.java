@@ -90,6 +90,12 @@ public class ModelUsageService {
         int fromIndex = (page - 1) * pageSize;
         int toIndex = Math.min(fromIndex + pageSize, logs.size());
 
+        // Protect against out-of-range page
+        if (fromIndex >= logs.size()) {
+            fromIndex = 0;
+            toIndex = 0;
+        }
+
         List<ModelUsageDetailVO.ModelUsageLogVO> records = logs.subList(fromIndex, toIndex)
                 .stream()
                 .map(this::toLogVO)
