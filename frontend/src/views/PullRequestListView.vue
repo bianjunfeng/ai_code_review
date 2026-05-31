@@ -88,8 +88,8 @@ import { Link, Search } from '@element-plus/icons-vue'
 import { listPullRequests } from '../api/github'
 import RiskLevelTag from '../components/common/RiskLevelTag.vue'
 import StatusTag from '../components/common/StatusTag.vue'
+import { createReviewTask } from '../api/review'
 import { buildPrUrl, isValidPrUrl } from '../utils/prUrl'
-import { startReviewTask } from '../utils/reviewTaskFlow'
 
 const emit = defineEmits(['open-report'])
 
@@ -138,9 +138,12 @@ async function startReview(row, forceRefresh) {
   }
   runningPrUrl.value = prUrl
   try {
-    const result = await startReviewTask(prUrl, { forceRefresh })
-    ElMessage.success(result.created.cached ? '已命中历史报告' : '评审任务已创建')
-    emit('open-report', result.created.taskId)
+    const created = await createReviewTask(prUrl, Boolean(forceRefresh))
+    if (!created?.taskId) {
+      throw new Error('创建任务失败，未返回 taskId')
+    }
+    ElMessage.success(created.cached ? '已命中历史报告' : '评审任务已创建')
+    emit('open-report', created.taskId)
   } catch (error) {
     ElMessage.error(error.message || '创建评审任务失败')
   } finally {
@@ -156,9 +159,12 @@ async function startManual(forceRefresh) {
   }
   manualLoading.value = true
   try {
-    const result = await startReviewTask(value, { forceRefresh })
-    ElMessage.success(result.created.cached ? '已命中历史报告' : '评审任务已创建')
-    emit('open-report', result.created.taskId)
+    const created = await createReviewTask(value, Boolean(forceRefresh))
+    if (!created?.taskId) {
+      throw new Error('创建任务失败，未返回 taskId')
+    }
+    ElMessage.success(created.cached ? '已命中历史报告' : '评审任务已创建')
+    emit('open-report', created.taskId)
   } catch (error) {
     ElMessage.error(error.message || '创建评审任务失败')
   } finally {

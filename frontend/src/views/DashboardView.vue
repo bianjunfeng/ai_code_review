@@ -171,9 +171,9 @@ import { getConfigStatus } from '../api/config'
 import RiskLevelTag from '../components/common/RiskLevelTag.vue'
 import StatTile from '../components/common/StatTile.vue'
 import StatusTag from '../components/common/StatusTag.vue'
+import { createReviewTask } from '../api/review'
 import { buildPrUrl, isValidPrUrl } from '../utils/prUrl'
 import { loadRecentTasks, saveRecentTask } from '../utils/recentTasks'
-import { startReviewTask } from '../utils/reviewTaskFlow'
 
 const emit = defineEmits(['open-report', 'navigate'])
 
@@ -257,8 +257,18 @@ async function startFromPull(item) {
   }
   runningPrUrl.value = prUrl
   try {
-    const result = await startReviewTask(prUrl)
-    afterTaskStarted(result.created.taskId)
+    const created = await createReviewTask(prUrl, false)
+    if (!created?.taskId) {
+      throw new Error('创建任务失败，未返回 taskId')
+    }
+    saveRecentTask({
+      taskId: created.taskId,
+      prUrl,
+      status: created.status || 'PENDING',
+      cached: created.cached,
+      cachedFromTaskId: created.cachedFromTaskId
+    })
+    afterTaskStarted(created.taskId, Boolean(created.cached))
   } catch (error) {
     ElMessage.error(error.message || '创建评审任务失败')
   } finally {
@@ -276,16 +286,18 @@ async function startManualReview(forceRefresh) {
 
   manualLoading.value = true
   try {
-    const result = await startReviewTask(value, { forceRefresh })
+    const created = await createReviewTask(value, Boolean(forceRefresh))
+    if (!created?.taskId) {
+      throw new Error('创建任务失败，未返回 taskId')
+    }
     saveRecentTask({
-      ...result.task,
-      taskId: result.created.taskId,
+      taskId: created.taskId,
       prUrl: value,
-      status: result.finalStatus || result.created.status,
-      cached: result.created.cached,
-      cachedFromTaskId: result.created.cachedFromTaskId
+      status: created.status || 'PENDING',
+      cached: created.cached,
+      cachedFromTaskId: created.cachedFromTaskId
     })
-    afterTaskStarted(result.created.taskId, Boolean(result.created.cached))
+    afterTaskStarted(created.taskId, Boolean(created.cached))
   } catch (error) {
     ElMessage.error(error.message || '创建评审任务失败')
   } finally {
