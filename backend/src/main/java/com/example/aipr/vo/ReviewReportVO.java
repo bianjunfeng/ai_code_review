@@ -14,6 +14,10 @@ public class ReviewReportVO {
     private String summary;
     private Integer riskScore;
     private String riskLevel;
+    private Integer totalFileCount;
+    private Integer analyzedFileCount;
+    private Integer skippedFileCount;
+    private Integer failedFileCount;
     private List<String> mainChanges;
     private List<RiskItemVO> riskItems;
     private List<String> testSuggestions;

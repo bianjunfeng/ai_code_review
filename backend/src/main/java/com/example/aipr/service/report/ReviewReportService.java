@@ -46,6 +46,10 @@ public class ReviewReportService {
                 .summary(resolveSummary(task))
                 .riskScore(task.getRiskScore() == null ? 0 : task.getRiskScore())
                 .riskLevel(task.getRiskLevel() == null ? "LOW" : task.getRiskLevel())
+                .totalFileCount(files.size())
+                .analyzedFileCount(countAnalyzedFiles(files))
+                .skippedFileCount(countSkippedFiles(files))
+                .failedFileCount(countFailedFiles(files))
                 .mainChanges(buildMainChanges(files))
                 .riskItems(comments.stream().map(this::toRiskItem).toList())
                 .testSuggestions(buildTestSuggestions(comments))
@@ -69,6 +73,10 @@ public class ReviewReportService {
         appendBlank(markdown);
         appendLine(markdown, "风险等级：" + valueOrDash(report.getRiskLevel()));
         appendLine(markdown, "风险分数：" + (report.getRiskScore() == null ? "-" : report.getRiskScore()));
+        appendLine(markdown, "文件统计：总数 " + defaultInt(report.getTotalFileCount())
+                + "，已分析 " + defaultInt(report.getAnalyzedFileCount())
+                + "，跳过 " + defaultInt(report.getSkippedFileCount())
+                + "，失败 " + defaultInt(report.getFailedFileCount()));
         appendBlank(markdown);
         appendLine(markdown, "PR：" + valueOrDefault(prInfo == null ? null : prInfo.getTitle(), "未返回标题"));
         appendLine(markdown, "作者：" + valueOrDash(prInfo == null ? null : prInfo.getAuthor()));
@@ -76,6 +84,11 @@ public class ReviewReportService {
 
         if (hasText(report.getSummary())) {
             appendSection(markdown, "总结");
+            if (defaultInt(report.getFailedFileCount()) > 0) {
+                appendLine(markdown, "> 注意：本次任务有 " + report.getFailedFileCount()
+                        + " 个文件分析失败，报告可能不完整，需要人工补充检查。");
+                appendBlank(markdown);
+            }
             appendLine(markdown, report.getSummary());
             appendBlank(markdown);
         }
@@ -138,7 +151,7 @@ public class ReviewReportService {
         if (ReviewTaskStatus.FAILED.name().equals(task.getStatus())) {
             return "AI Review 任务执行失败：" + task.getErrorMessage();
         }
-        if (!ReviewTaskStatus.SUCCESS.name().equals(task.getStatus())) {
+        if (!isReportReadyStatus(task.getStatus())) {
             return "AI Review 任务正在执行中，请稍后刷新报告。";
         }
         return "本次 PR 暂无明确总结。";
@@ -149,6 +162,7 @@ public class ReviewReportService {
                 .map(ReviewFile::getAiSummary)
                 .filter(Objects::nonNull)
                 .filter(summary -> !summary.isBlank())
+                .filter(summary -> !summary.startsWith("[分析失败]"))
                 .limit(5)
                 .toList();
         if (!summaries.isEmpty()) {
@@ -217,6 +231,34 @@ public class ReviewReportService {
                 .reduce(0, Integer::sum);
     }
 
+    private Integer countAnalyzedFiles(List<ReviewFile> files) {
+        return (int) files.stream()
+                .filter(file -> !Boolean.TRUE.equals(file.getSkipped()))
+                .filter(file -> hasText(file.getAiSummary()))
+                .filter(file -> !file.getAiSummary().startsWith("[分析失败]"))
+                .count();
+    }
+
+    private Integer countSkippedFiles(List<ReviewFile> files) {
+        return (int) files.stream()
+                .filter(file -> Boolean.TRUE.equals(file.getSkipped()))
+                .count();
+    }
+
+    private Integer countFailedFiles(List<ReviewFile> files) {
+        return (int) files.stream()
+                .filter(file -> !Boolean.TRUE.equals(file.getSkipped()))
+                .map(ReviewFile::getAiSummary)
+                .filter(this::hasText)
+                .filter(summary -> summary.startsWith("[分析失败]"))
+                .count();
+    }
+
+    private boolean isReportReadyStatus(String status) {
+        return ReviewTaskStatus.SUCCESS.name().equals(status)
+                || ReviewTaskStatus.PARTIAL_SUCCESS.name().equals(status);
+    }
+
     private void appendSection(StringBuilder markdown, String title) {
         appendLine(markdown, "### " + title);
         appendBlank(markdown);
@@ -240,5 +282,9 @@ public class ReviewReportService {
 
     private String valueOrDefault(String value, String fallback) {
         return hasText(value) ? value : fallback;
+    }
+
+    private int defaultInt(Integer value) {
+        return value == null ? 0 : value;
     }
 }

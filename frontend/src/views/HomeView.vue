@@ -129,11 +129,11 @@ async function handleAnalyze() {
     loadingStatus.value = '正在获取 PR 信息...'
     const taskStatus = await pollReviewTaskStatus(taskId)
 
-    if (taskStatus === 'SUCCESS') {
+    if (taskStatus === 'SUCCESS' || taskStatus === 'PARTIAL_SUCCESS') {
       loadingStatus.value = '正在生成评审报告...'
       report.value = await getReviewReport(taskId)
       loadingStatus.value = ''
-      ElMessage.success('评审报告已生成')
+      ElMessage.success(taskStatus === 'PARTIAL_SUCCESS' ? '评审报告已生成，部分文件需人工补充检查' : '评审报告已生成')
     } else if (taskStatus === 'FAILED') {
       loadingStatus.value = ''
       const task = await getReviewTask(taskId).catch(() => null)

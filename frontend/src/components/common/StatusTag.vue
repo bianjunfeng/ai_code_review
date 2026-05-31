@@ -23,6 +23,7 @@ const label = computed(() => {
     SUMMARIZING: '生成总结',
     SCORING: '计算评分',
     SUCCESS: '成功',
+    PARTIAL_SUCCESS: '部分成功',
     FAILED: '失败',
     CANCELLED: '已取消',
     UNKNOWN: '未知'
@@ -32,6 +33,7 @@ const label = computed(() => {
 
 const tagType = computed(() => {
   if (normalized.value === 'SUCCESS') return 'success'
+  if (normalized.value === 'PARTIAL_SUCCESS') return 'warning'
   if (normalized.value === 'FAILED' || normalized.value === 'CANCELLED') return 'danger'
   if (normalized.value === 'PENDING') return 'info'
   return 'warning'
