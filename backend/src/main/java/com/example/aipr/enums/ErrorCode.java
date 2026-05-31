@@ -12,6 +12,7 @@ public enum ErrorCode {
     GITHUB_PR_NOT_FOUND(50103, "GitHub PR 不存在或无访问权限"),
     GITHUB_RATE_LIMITED(50104, "GitHub API 限流，请稍后重试"),
     SYSTEM_ERROR(50000, "系统异常，请稍后重试"),
+    TOO_MANY_REQUESTS(42900, "请求过于频繁，请稍后再试"),
     AI_SERVICE_ERROR(50201, "AI 服务调用失败，请稍后重试"),
     AI_RESPONSE_PARSE_ERROR(50202, "模型返回格式异常，请重新评审");
 

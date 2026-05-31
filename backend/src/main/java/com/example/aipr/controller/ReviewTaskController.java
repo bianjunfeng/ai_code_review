@@ -1,14 +1,20 @@
 package com.example.aipr.controller;
 
+import com.example.aipr.common.BusinessException;
 import com.example.aipr.common.Result;
+import com.example.aipr.config.RateLimitProperties;
 import com.example.aipr.dto.CreateReviewTaskRequest;
+import com.example.aipr.enums.ErrorCode;
+import com.example.aipr.service.ratelimit.RateLimitService;
 import com.example.aipr.service.report.ReviewReportService;
 import com.example.aipr.service.review.ReviewTaskService;
+import com.example.aipr.util.IpUtils;
 import com.example.aipr.vo.ReviewCommentVO;
 import com.example.aipr.vo.ReviewFileVO;
 import com.example.aipr.vo.ReviewReportVO;
 import com.example.aipr.vo.ReviewTaskCreatedVO;
 import com.example.aipr.vo.ReviewTaskDetailVO;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,9 +34,26 @@ public class ReviewTaskController {
 
     private final ReviewTaskService reviewTaskService;
     private final ReviewReportService reviewReportService;
+    private final RateLimitService rateLimitService;
+    private final RateLimitProperties rateLimitProperties;
 
     @PostMapping
-    public Result<ReviewTaskCreatedVO> create(@Valid @RequestBody CreateReviewTaskRequest request) {
+    public Result<ReviewTaskCreatedVO> create(@Valid @RequestBody CreateReviewTaskRequest request,
+                                              HttpServletRequest httpRequest) {
+        // IP 限流
+        if (rateLimitProperties.isEnabled()) {
+            String ip = IpUtils.getClientIp(httpRequest);
+            String ipKey = "rate_limit:ip:" + ip + ":create-review";
+            boolean allowed = rateLimitService.tryAcquire(
+                    ipKey,
+                    rateLimitProperties.getCreateReview().getIpLimit(),
+                    rateLimitProperties.getCreateReview().getIpWindowSeconds()
+            );
+            if (!allowed) {
+                throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS, "请求过于频繁，请稍后再试");
+            }
+        }
+
         return Result.ok(reviewTaskService.createTask(request.getPrUrl(), request.getForceRefresh()));
     }
 

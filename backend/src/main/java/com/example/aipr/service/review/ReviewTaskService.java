@@ -3,6 +3,7 @@ package com.example.aipr.service.review;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.aipr.common.BusinessException;
 import com.example.aipr.config.AiProperties;
+import com.example.aipr.config.RateLimitProperties;
 import com.example.aipr.entity.ReviewComment;
 import com.example.aipr.entity.ReviewFile;
 import com.example.aipr.entity.ReviewTask;
@@ -17,6 +18,7 @@ import com.example.aipr.service.github.GitHubPrInfo;
 import com.example.aipr.service.github.ParsedPrUrl;
 import com.example.aipr.service.github.PrUrlParser;
 import com.example.aipr.service.prompt.PromptRenderer;
+import com.example.aipr.service.ratelimit.RateLimitService;
 import com.example.aipr.vo.ReviewCommentVO;
 import com.example.aipr.vo.ReviewFileVO;
 import com.example.aipr.vo.ReviewTaskCreatedVO;
@@ -46,6 +48,8 @@ public class ReviewTaskService {
     private final ReviewCommentMapper reviewCommentMapper;
     private final ReviewTaskExecutor reviewTaskExecutor;
     private final AiProperties aiProperties;
+    private final RateLimitService rateLimitService;
+    private final RateLimitProperties rateLimitProperties;
 
     public ReviewTaskCreatedVO createTask(String prUrl, Boolean forceRefresh) {
         log.info("[Task] 创建 Review 任务, prUrl={}, forceRefresh={}", prUrl, forceRefresh);
@@ -67,6 +71,34 @@ public class ReviewTaskService {
                             .cached(true)
                             .cachedFromTaskId(cachedTask.getCachedFromTaskId())
                             .build();
+                }
+            }
+
+            // forceRefresh 限流
+            if (Boolean.TRUE.equals(forceRefresh) && rateLimitProperties.isEnabled()) {
+                String forceKey = String.format("rate_limit:force_refresh:%s:%s:%d",
+                        parsedPrUrl.owner(), parsedPrUrl.repo(), parsedPrUrl.pullNumber());
+                boolean allowed = rateLimitService.tryAcquire(
+                        forceKey,
+                        rateLimitProperties.getForceRefresh().getLimit(),
+                        rateLimitProperties.getForceRefresh().getWindowSeconds()
+                );
+                if (!allowed) {
+                    throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS, "该 PR 刚刚重新分析过，请稍后再试");
+                }
+            }
+
+            // PR 级限流（未命中缓存时）
+            if (rateLimitProperties.isEnabled()) {
+                String prKey = String.format("rate_limit:pr:%s:%s:%d",
+                        parsedPrUrl.owner(), parsedPrUrl.repo(), parsedPrUrl.pullNumber());
+                boolean allowed = rateLimitService.tryAcquire(
+                        prKey,
+                        rateLimitProperties.getCreateReview().getPrLimit(),
+                        rateLimitProperties.getCreateReview().getPrWindowSeconds()
+                );
+                if (!allowed) {
+                    throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS, "同一个 PR 正在处理中，请稍后再试");
                 }
             }
 
