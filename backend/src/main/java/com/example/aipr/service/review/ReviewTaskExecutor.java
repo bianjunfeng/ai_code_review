@@ -66,6 +66,7 @@ public class ReviewTaskExecutor {
                 } catch (Exception e) {
                     failCount++;
                     log.warn("[Executor] taskId={}, 文件分析失败, file={}, error={}", taskId, file.getFilePath(), e.getMessage());
+                    markFileFailed(taskId, file, e.getMessage());
                 }
             }
 
@@ -94,6 +95,18 @@ public class ReviewTaskExecutor {
                 .changes(file.getChanges())
                 .patch(file.getPatch())
                 .build();
+    }
+
+    private void markFileFailed(Long taskId, ReviewFile file, String errorMessage) {
+        try {
+            ReviewFile update = new ReviewFile();
+            update.setId(file.getId());
+            String msg = errorMessage != null ? errorMessage.substring(0, Math.min(errorMessage.length(), 200)) : "未知错误";
+            update.setAiSummary("[分析失败] " + msg);
+            reviewFileMapper.updateById(update);
+        } catch (Exception e) {
+            log.warn("[Executor] taskId={}, 标记文件失败异常, file={}", taskId, file.getFilePath(), e);
+        }
     }
 
     private void saveFileReviewResult(Long taskId, ReviewFile file, FileReviewResult result) {
@@ -133,6 +146,8 @@ public class ReviewTaskExecutor {
     }
 
     private void finishTask(Long taskId, List<FileReviewResult> aiResults) {
+        updateStatus(taskId, ReviewTaskStatus.SCORING, null);
+
         List<ReviewFile> files = reviewFileMapper.findByTaskId(taskId);
         List<ReviewComment> comments = reviewCommentMapper.findByTaskId(taskId);
 
