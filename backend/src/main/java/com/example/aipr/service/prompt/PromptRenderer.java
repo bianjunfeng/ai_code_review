@@ -42,13 +42,17 @@ public class PromptRenderer {
             prompt.append("该文件无内容变更或无法获取变更内容。\n");
         } else {
             boolean truncated = patch.length() > MAX_PATCH_LENGTH;
-            context.setTruncated(truncated);
+            boolean upstreamTruncated = Boolean.TRUE.equals(context.getTruncated());
+            context.setTruncated(truncated || upstreamTruncated);
             if (truncated) {
                 patch = patch.substring(0, MAX_PATCH_LENGTH);
                 prompt.append("代码变更 (diff)：\n").append(patch).append("\n");
                 prompt.append("\n[注意：diff 已截断，超出长度限制]\n");
             } else {
                 prompt.append("代码变更 (diff)：\n").append(patch).append("\n");
+                if (upstreamTruncated) {
+                    prompt.append("\n[注意：diff 已截断，仅分析部分变更]\n");
+                }
             }
         }
 

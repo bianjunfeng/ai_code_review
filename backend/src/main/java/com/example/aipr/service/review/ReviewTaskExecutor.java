@@ -128,6 +128,7 @@ public class ReviewTaskExecutor {
                 .deletions(file.getDeletions())
                 .changes(file.getChanges())
                 .patch(file.getPatch())
+                .truncated(file.getTruncated())
                 .staticRuleFindings(staticRuleFindings)
                 .build();
     }

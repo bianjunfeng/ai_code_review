@@ -376,6 +376,13 @@ GET /api/health
 }
 ```
 
+说明：
+
+```text
+cached=true 时后端会创建新的 SUCCESS 任务，cachedFromTaskId 指向历史成功任务。
+新任务会复制历史任务的 review_file 和 review_comment，报告、文件视图和评论视图均可按新 taskId 查询。
+```
+
 ------
 
 ### 8.2 GitHub PR 列表
@@ -726,6 +733,16 @@ GITHUB_TOKEN=ghp_xxx
 AI_BASE_URL=https://api.deepseek.com/v1
 AI_API_KEY=sk-xxx
 AI_MODEL_NAME=deepseek-chat
+```
+
+可选 Diff 限制配置：
+
+```yaml
+review:
+  diff:
+    max-files: 30
+    max-file-patch-chars: 12000
+    max-total-patch-chars: 100000
 ```
 
 ------

@@ -49,6 +49,7 @@ public class ReviewReportService {
                 .totalFileCount(files.size())
                 .analyzedFileCount(countAnalyzedFiles(files))
                 .skippedFileCount(countSkippedFiles(files))
+                .truncatedFileCount(countTruncatedFiles(files))
                 .failedFileCount(countFailedFiles(files))
                 .mainChanges(buildMainChanges(files))
                 .riskItems(comments.stream().map(this::toRiskItem).toList())
@@ -76,6 +77,7 @@ public class ReviewReportService {
         appendLine(markdown, "文件统计：总数 " + defaultInt(report.getTotalFileCount())
                 + "，已分析 " + defaultInt(report.getAnalyzedFileCount())
                 + "，跳过 " + defaultInt(report.getSkippedFileCount())
+                + "，截断 " + defaultInt(report.getTruncatedFileCount())
                 + "，失败 " + defaultInt(report.getFailedFileCount()));
         appendBlank(markdown);
         appendLine(markdown, "PR：" + valueOrDefault(prInfo == null ? null : prInfo.getTitle(), "未返回标题"));
@@ -252,6 +254,12 @@ public class ReviewReportService {
     private Integer countSkippedFiles(List<ReviewFile> files) {
         return (int) files.stream()
                 .filter(file -> Boolean.TRUE.equals(file.getSkipped()))
+                .count();
+    }
+
+    private Integer countTruncatedFiles(List<ReviewFile> files) {
+        return (int) files.stream()
+                .filter(file -> Boolean.TRUE.equals(file.getTruncated()))
                 .count();
     }
 

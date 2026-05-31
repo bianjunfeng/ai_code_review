@@ -69,6 +69,7 @@ class ReviewReportServiceTest {
         assertEquals(3, result.getTotalFileCount());
         assertEquals(1, result.getAnalyzedFileCount());
         assertEquals(1, result.getSkippedFileCount());
+        assertEquals(1, result.getTruncatedFileCount());
         assertEquals(1, result.getFailedFileCount());
         assertTrue(result.getSummary().contains("部分文件分析失败"));
     }
@@ -82,7 +83,7 @@ class ReviewReportServiceTest {
 
         ReviewMarkdownVO result = reviewReportService.getReviewMarkdown(taskId);
 
-        assertTrue(result.getMarkdown().contains("文件统计：总数 3，已分析 1，跳过 1，失败 1"));
+        assertTrue(result.getMarkdown().contains("文件统计：总数 3，已分析 1，跳过 1，截断 1，失败 1"));
         assertTrue(result.getMarkdown().contains("注意：本次任务有 1 个文件分析失败"));
     }
 
@@ -98,6 +99,7 @@ class ReviewReportServiceTest {
         assertEquals(1, result.getTotalFileCount());
         assertEquals(1, result.getAnalyzedFileCount());
         assertEquals(0, result.getSkippedFileCount());
+        assertEquals(0, result.getTruncatedFileCount());
         assertEquals(0, result.getFailedFileCount());
     }
 
@@ -179,6 +181,7 @@ class ReviewReportServiceTest {
         file.setAdditions(10);
         file.setDeletions(2);
         file.setSkipped(false);
+        file.setTruncated(true);
         file.setAiSummary("新增 Review Markdown 导出接口。");
         return file;
     }

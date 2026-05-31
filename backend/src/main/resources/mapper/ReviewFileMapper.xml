@@ -12,6 +12,9 @@
         <result column="deletions" property="deletions"/>
         <result column="changes" property="changes"/>
         <result column="patch" property="patch"/>
+        <result column="original_patch_length" property="originalPatchLength"/>
+        <result column="analyzed_patch_length" property="analyzedPatchLength"/>
+        <result column="truncated" property="truncated"/>
         <result column="ai_summary" property="aiSummary"/>
         <result column="skipped" property="skipped"/>
         <result column="skip_reason" property="skipReason"/>
@@ -20,7 +23,8 @@
 
     <sql id="Base_Column_List">
         id, task_id, file_path, file_status, language, additions, deletions,
-        changes, patch, ai_summary, skipped, skip_reason, created_at
+        changes, patch, original_patch_length, analyzed_patch_length, truncated,
+        ai_summary, skipped, skip_reason, created_at
     </sql>
 
     <select id="findByTaskId" resultMap="BaseResultMap">
@@ -41,12 +45,15 @@
     </select>
 
     <insert id="insertBatch" parameterType="java.util.List">
-        INSERT INTO review_file (task_id, file_path, file_status, language, additions, deletions, changes, patch, skipped, skip_reason)
+        INSERT INTO review_file (task_id, file_path, file_status, language, additions, deletions, changes,
+                                 patch, original_patch_length, analyzed_patch_length, truncated,
+                                 ai_summary, skipped, skip_reason)
         VALUES
         <foreach collection="list" item="item" separator=",">
             (#{item.taskId}, #{item.filePath}, #{item.fileStatus}, #{item.language},
              #{item.additions}, #{item.deletions}, #{item.changes}, #{item.patch},
-             #{item.skipped}, #{item.skipReason})
+             #{item.originalPatchLength}, #{item.analyzedPatchLength}, #{item.truncated},
+             #{item.aiSummary}, #{item.skipped}, #{item.skipReason})
         </foreach>
     </insert>
 
