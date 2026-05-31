@@ -37,7 +37,7 @@ public class OpenAiCompatibleClient implements LlmClient {
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(120, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
-                .addInterceptor(new RetryInterceptor(3))
+                .addInterceptor(new RetryInterceptor(1))
                 .build();
     }
 
