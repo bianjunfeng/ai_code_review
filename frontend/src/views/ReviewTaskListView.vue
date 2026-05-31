@@ -9,6 +9,7 @@
         <el-input v-model="filters.keyword" clearable placeholder="搜索 PR 标题 / 仓库 / 作者" :prefix-icon="Search" />
         <el-select v-model="filters.status" clearable placeholder="状态">
           <el-option label="成功" value="SUCCESS" />
+          <el-option label="部分成功" value="PARTIAL_SUCCESS" />
           <el-option label="评审中" value="REVIEWING" />
           <el-option label="等待中" value="PENDING" />
           <el-option label="失败" value="FAILED" />
@@ -60,7 +61,7 @@
         </el-table-column>
         <el-table-column label="失败原因" min-width="150">
           <template #default="{ row }">
-            <span v-if="row.status === 'FAILED' && row.errorMessage" class="error-text" :title="row.errorMessage">
+            <span v-if="['FAILED', 'PARTIAL_SUCCESS'].includes(row.status) && row.errorMessage" class="error-text" :title="row.errorMessage">
               {{ truncateError(row.errorMessage) }}
             </span>
             <span v-else class="muted">-</span>

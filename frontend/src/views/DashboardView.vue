@@ -215,7 +215,7 @@ const stats = computed(() => {
   const tasks = recentTasks.value
   return {
     total: tasks.length,
-    success: tasks.filter((task) => task.status === 'SUCCESS').length,
+    success: tasks.filter((task) => ['SUCCESS', 'PARTIAL_SUCCESS'].includes(task.status)).length,
     highRisk: tasks.filter((task) => ['HIGH', 'CRITICAL'].includes(String(task.riskLevel || '').toUpperCase())).length,
     cached: tasks.filter((task) => task.cached).length
   }

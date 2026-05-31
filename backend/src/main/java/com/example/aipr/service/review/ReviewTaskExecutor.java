@@ -99,7 +99,7 @@ public class ReviewTaskExecutor {
             int fail = failCount.get();
             log.info("[Executor] taskId={}, AI Review 完成, success={}, fail={}", taskId, success, fail);
             updateStatus(taskId, ReviewTaskStatus.SUMMARIZING, null);
-            finishTask(taskId, aiResults);
+            finishTask(taskId, aiResults, fail);
         } catch (Exception e) {
             log.error("[Executor] taskId={}, 任务执行异常: {}", taskId, e.getMessage(), e);
             updateStatus(taskId, ReviewTaskStatus.FAILED, e.getMessage());
@@ -172,7 +172,7 @@ public class ReviewTaskExecutor {
         return entity;
     }
 
-    private void finishTask(Long taskId, List<FileReviewResult> aiResults) {
+    private void finishTask(Long taskId, List<FileReviewResult> aiResults, int failedFileCount) {
         updateStatus(taskId, ReviewTaskStatus.SCORING, null);
 
         List<ReviewFile> files = reviewFileMapper.findByTaskId(taskId);
@@ -186,46 +186,53 @@ public class ReviewTaskExecutor {
                 riskSummary.criticalCount(), riskSummary.highCount(),
                 riskSummary.mediumCount(), riskSummary.lowCount(), riskSummary.infoCount());
 
-        String summary = buildSummary(files);
-        String finalReview = buildFinalReview(riskSummary);
+        String summary = buildSummary(files, failedFileCount);
+        String finalReview = buildFinalReview(riskSummary, failedFileCount);
 
         reviewTaskMapper.updateRiskScore(taskId, riskSummary.riskScore(), riskSummary.riskLevel(), summary, finalReview);
 
         ReviewTask update = new ReviewTask();
         update.setId(taskId);
-        update.setStatus(ReviewTaskStatus.SUCCESS.name());
+        ReviewTaskStatus finalStatus = failedFileCount > 0
+                ? ReviewTaskStatus.PARTIAL_SUCCESS
+                : ReviewTaskStatus.SUCCESS;
+        update.setStatus(finalStatus.name());
         update.setResultJson(buildResultJson(aiResults));
-        update.setErrorMessage(null);
+        update.setErrorMessage(failedFileCount > 0 ? "部分文件分析失败：" + failedFileCount + " 个文件未生成 AI Review 结果" : null);
         update.setUpdatedAt(LocalDateTime.now());
         reviewTaskMapper.updateById(update);
 
-        log.info("[Executor] taskId={}, 任务完成, status=SUCCESS, riskScore={}, riskLevel={}", taskId, riskSummary.riskScore(), riskSummary.riskLevel());
+        log.info("[Executor] taskId={}, 任务完成, status={}, riskScore={}, riskLevel={}, failedFiles={}",
+                taskId, finalStatus, riskSummary.riskScore(), riskSummary.riskLevel(), failedFileCount);
     }
 
-    private String buildSummary(List<ReviewFile> files) {
+    private String buildSummary(List<ReviewFile> files, int failedFileCount) {
         List<String> summaries = files.stream()
                 .map(ReviewFile::getAiSummary)
                 .filter(Objects::nonNull)
                 .filter(summary -> !summary.isBlank())
+                .filter(summary -> !summary.startsWith("[分析失败]"))
                 .limit(5)
                 .toList();
+        String failedNotice = failedFileCount > 0 ? "其中 " + failedFileCount + " 个文件分析失败，报告可能不完整。" : "";
         if (summaries.isEmpty()) {
-            return "本次 PR 已完成代码变更分析，未生成明确文件级总结。";
+            return ("本次 PR 已完成代码变更分析，未生成明确文件级总结。" + failedNotice).trim();
         }
-        return "本次 PR 涉及 " + files.size() + " 个文件变更：" + String.join("；", summaries);
+        return ("本次 PR 涉及 " + files.size() + " 个文件变更：" + String.join("；", summaries) + "。" + failedNotice).trim();
     }
 
-    private String buildFinalReview(RiskScoreCalculator.RiskScoreResult riskSummary) {
+    private String buildFinalReview(RiskScoreCalculator.RiskScoreResult riskSummary, int failedFileCount) {
+        String partialNotice = failedFileCount > 0 ? "注意：有 " + failedFileCount + " 个文件分析失败，合并前需要人工补充检查。 " : "";
         if ("CRITICAL".equals(riskSummary.riskLevel())) {
-            return "本次 PR 存在严重风险，建议修复关键问题并完成人工复核后再考虑合并。";
+            return partialNotice + "本次 PR 存在严重风险，建议修复关键问题并完成人工复核后再考虑合并。";
         }
         if ("HIGH".equals(riskSummary.riskLevel())) {
-            return "建议优先修复高风险问题后再合并。";
+            return partialNotice + "建议优先修复高风险问题后再合并。";
         }
         if ("MEDIUM".equals(riskSummary.riskLevel())) {
-            return "建议处理主要中风险问题，并结合人工复核后合并。";
+            return partialNotice + "建议处理主要中风险问题，并结合人工复核后合并。";
         }
-        return "未发现高风险问题，可以结合人工复核后合并。";
+        return partialNotice + "未发现高风险问题，可以结合人工复核后合并。";
     }
 
     private String buildResultJson(List<FileReviewResult> aiResults) {

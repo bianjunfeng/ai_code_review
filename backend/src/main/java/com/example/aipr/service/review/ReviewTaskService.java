@@ -369,6 +369,7 @@ public class ReviewTaskService {
     private static final String STAGE_SUMMARIZING = "生成报告";
     private static final String STAGE_SCORING = "计算风险评分";
     private static final String STAGE_SUCCESS = "完成";
+    private static final String STAGE_PARTIAL_SUCCESS = "部分完成";
     private static final String STAGE_FAILED = "失败";
     private static final String STAGE_CANCELLED = "已取消";
     private static final String STAGE_UNKNOWN = "未知";
@@ -383,6 +384,7 @@ public class ReviewTaskService {
             case "SUMMARIZING" -> STAGE_SUMMARIZING;
             case "SCORING" -> STAGE_SCORING;
             case "SUCCESS" -> STAGE_SUCCESS;
+            case "PARTIAL_SUCCESS" -> STAGE_PARTIAL_SUCCESS;
             case "FAILED" -> STAGE_FAILED;
             case "CANCELLED" -> STAGE_CANCELLED;
             default -> STAGE_UNKNOWN;
@@ -392,7 +394,7 @@ public class ReviewTaskService {
     private boolean isTerminal(String status) {
         if (status == null) return false;
         return switch (status.toUpperCase()) {
-            case "SUCCESS", "FAILED", "CANCELLED" -> true;
+            case "SUCCESS", "PARTIAL_SUCCESS", "FAILED", "CANCELLED" -> true;
             default -> false;
         };
     }
@@ -405,6 +407,7 @@ public class ReviewTaskService {
         long analyzed = allFiles.stream()
                 .filter(f -> !Boolean.TRUE.equals(f.getSkipped()))
                 .filter(f -> f.getAiSummary() != null && !f.getAiSummary().isBlank())
+                .filter(f -> !f.getAiSummary().startsWith("[分析失败]"))
                 .count();
         long failed = allFiles.stream()
                 .filter(f -> !Boolean.TRUE.equals(f.getSkipped()))

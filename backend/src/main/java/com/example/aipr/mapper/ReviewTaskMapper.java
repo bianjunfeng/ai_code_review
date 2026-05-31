@@ -33,7 +33,7 @@ public interface ReviewTaskMapper extends BaseMapper<ReviewTask> {
                                              @Param("modelName") String modelName,
                                              @Param("promptVersion") String promptVersion);
 
-    @Select("SELECT COUNT(*) FROM review_task WHERE status = 'SUCCESS'")
+    @Select("SELECT COUNT(*) FROM review_task WHERE status IN ('SUCCESS', 'PARTIAL_SUCCESS')")
     Long countSuccess();
 
     @Select("SELECT COUNT(*) FROM review_task WHERE status = 'FAILED'")

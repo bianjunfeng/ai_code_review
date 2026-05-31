@@ -219,7 +219,7 @@ function startPolling() {
       task.value = { ...task.value, ...t }
       if (!isPollingStatus(t.status)) {
         stopPolling()
-        if (String(t.status).toUpperCase() === 'SUCCESS') {
+        if (isReportReadyStatus(t.status)) {
           await loadReportData()
         }
       }
@@ -322,6 +322,11 @@ const traceSteps = computed(() => [
     status: 'SUCCESS',
     title: '完成',
     description: '报告已保存，可进入详情查看'
+  },
+  {
+    status: 'PARTIAL_SUCCESS',
+    title: '部分完成',
+    description: '报告已保存，但存在文件分析失败，需要人工补充检查'
   }
 ])
 
@@ -330,8 +335,12 @@ const traceActiveIndex = computed(() => {
   if (status === 'FAILED') return Math.max(0, traceSteps.value.findIndex((item) => item.status === 'REVIEWING'))
   const index = traceSteps.value.findIndex((item) => item.status === status)
   if (index >= 0) return index
-  return status === 'SUCCESS' ? traceSteps.value.length : 0
+  return isReportReadyStatus(status) ? traceSteps.value.length : 0
 })
+
+function isReportReadyStatus(status) {
+  return ['SUCCESS', 'PARTIAL_SUCCESS'].includes(String(status || '').toUpperCase())
+}
 
 onMounted(loadReport)
 
