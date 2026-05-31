@@ -24,6 +24,10 @@
           <el-icon><Tickets /></el-icon>
           <span>任务中心</span>
         </el-menu-item>
+        <el-menu-item index="model-usage">
+          <el-icon><Monitor /></el-icon>
+          <span>用量监控</span>
+        </el-menu-item>
         <el-menu-item index="settings">
           <el-icon><Setting /></el-icon>
           <span>系统状态</span>
@@ -52,7 +56,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Connection, DataBoard, List, Refresh, Setting, Tickets } from '@element-plus/icons-vue'
+import { Connection, DataBoard, List, Refresh, Setting, Tickets, Monitor } from '@element-plus/icons-vue'
 
 const props = defineProps({
   activeView: {
@@ -79,6 +83,10 @@ const metaMap = {
   report: {
     kicker: 'Review Report',
     title: '报告详情'
+  },
+  'model-usage': {
+    kicker: 'Monitoring',
+    title: '用量监控'
   },
   settings: {
     kicker: 'Runtime Status',
