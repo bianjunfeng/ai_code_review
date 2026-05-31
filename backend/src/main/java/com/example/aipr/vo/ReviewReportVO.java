@@ -17,6 +17,7 @@ public class ReviewReportVO {
     private Integer totalFileCount;
     private Integer analyzedFileCount;
     private Integer skippedFileCount;
+    private Integer truncatedFileCount;
     private Integer failedFileCount;
     private List<String> mainChanges;
     private List<RiskItemVO> riskItems;

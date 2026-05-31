@@ -27,6 +27,7 @@ CREATE TABLE review_task (
     base_sha VARCHAR(64),
     model_name VARCHAR(100),
     prompt_version VARCHAR(50) DEFAULT 'v1',
+    commit_summary VARCHAR(1000) DEFAULT NULL,
     cached_from_task_id BIGINT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -49,6 +50,9 @@ CREATE TABLE review_file (
     deletions INT DEFAULT 0,
     changes INT DEFAULT 0,
     patch CLOB,
+    original_patch_length INT NOT NULL DEFAULT 0,
+    analyzed_patch_length INT NOT NULL DEFAULT 0,
+    truncated TINYINT NOT NULL DEFAULT 0,
     ai_summary CLOB,
     skipped TINYINT NOT NULL DEFAULT 0,
     skip_reason VARCHAR(500),

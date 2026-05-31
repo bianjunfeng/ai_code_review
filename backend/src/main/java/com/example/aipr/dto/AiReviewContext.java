@@ -16,6 +16,10 @@ public class AiReviewContext {
     private String prAuthor;
     private String sourceBranch;
     private String targetBranch;
+    /**
+     * PR commit 摘要，最多 10 条，以 "; " 分隔。
+     */
+    private String commitSummary;
     private String filePath;
     private String fileStatus;
     private String language;

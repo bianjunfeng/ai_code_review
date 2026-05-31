@@ -14,6 +14,7 @@ import com.example.aipr.mapper.ReviewFileMapper;
 import com.example.aipr.mapper.ReviewTaskMapper;
 import com.example.aipr.service.github.GitHubChangedFile;
 import com.example.aipr.service.github.GitHubClient;
+import com.example.aipr.service.github.GitHubCommitInfo;
 import com.example.aipr.service.github.GitHubPrInfo;
 import com.example.aipr.service.github.ParsedPrUrl;
 import com.example.aipr.service.github.PrUrlParser;
@@ -284,9 +285,33 @@ public class ReviewTaskService {
         task.setCreatedAt(LocalDateTime.now());
         task.setUpdatedAt(LocalDateTime.now());
 
+        // 获取 commit 摘要，GitHub API 异常时设为空字符串
+        String commitSummary = fetchCommitSummary(parsedPrUrl);
+        task.setCommitSummary(commitSummary);
+
         reviewTaskMapper.insert(task);
 
         return task;
+    }
+
+    /**
+     * 获取 PR commit 摘要，失败时返回空字符串。
+     */
+    private String fetchCommitSummary(ParsedPrUrl parsedPrUrl) {
+        try {
+            List<GitHubCommitInfo> commits = gitHubClient.getPullRequestCommits(parsedPrUrl);
+            if (commits == null || commits.isEmpty()) {
+                return "";
+            }
+            return commits.stream()
+                    .map(GitHubCommitInfo::getMessage)
+                    .filter(m -> m != null && !m.isBlank())
+                    .limit(10)
+                    .collect(java.util.stream.Collectors.joining("; "));
+        } catch (Exception e) {
+            log.warn("[Task] 获取 commit 摘要失败，使用空摘要: {}", e.getMessage());
+            return "";
+        }
     }
 
     private ReviewTask createCacheHitTask(ReviewTask cachedTask, ParsedPrUrl parsedPrUrl, GitHubPrInfo prInfo) {
@@ -316,9 +341,68 @@ public class ReviewTaskService {
         task.setUpdatedAt(LocalDateTime.now());
 
         reviewTaskMapper.insert(task);
+        copyCacheHitDetails(cachedTask.getId(), task.getId());
 
         log.info("[Task] 缓存命中记录已创建, newTaskId={}, cachedFromTaskId={}", task.getId(), cachedTask.getId());
         return task;
+    }
+
+    private void copyCacheHitDetails(Long sourceTaskId, Long targetTaskId) {
+        List<ReviewFile> sourceFiles = reviewFileMapper.findByTaskId(sourceTaskId);
+        if (!sourceFiles.isEmpty()) {
+            List<ReviewFile> copiedFiles = sourceFiles.stream()
+                    .map(file -> copyFileForTask(file, targetTaskId))
+                    .toList();
+            reviewFileMapper.insertBatch(copiedFiles);
+        }
+
+        List<ReviewComment> sourceComments = reviewCommentMapper.findByTaskId(sourceTaskId);
+        if (!sourceComments.isEmpty()) {
+            List<ReviewComment> copiedComments = sourceComments.stream()
+                    .map(comment -> copyCommentForTask(comment, targetTaskId))
+                    .toList();
+            reviewCommentMapper.insertBatch(copiedComments);
+        }
+
+        log.info("[Task] 缓存命中详情复制完成, sourceTaskId={}, targetTaskId={}, fileCount={}, commentCount={}",
+                sourceTaskId, targetTaskId, sourceFiles.size(), sourceComments.size());
+    }
+
+    private ReviewFile copyFileForTask(ReviewFile source, Long targetTaskId) {
+        ReviewFile target = new ReviewFile();
+        target.setTaskId(targetTaskId);
+        target.setFilePath(source.getFilePath());
+        target.setFileStatus(source.getFileStatus());
+        target.setLanguage(source.getLanguage());
+        target.setAdditions(source.getAdditions());
+        target.setDeletions(source.getDeletions());
+        target.setChanges(source.getChanges());
+        target.setPatch(source.getPatch());
+        target.setOriginalPatchLength(source.getOriginalPatchLength());
+        target.setAnalyzedPatchLength(source.getAnalyzedPatchLength());
+        target.setTruncated(source.getTruncated());
+        target.setAiSummary(source.getAiSummary());
+        target.setSkipped(source.getSkipped());
+        target.setSkipReason(source.getSkipReason());
+        return target;
+    }
+
+    private ReviewComment copyCommentForTask(ReviewComment source, Long targetTaskId) {
+        ReviewComment target = new ReviewComment();
+        target.setTaskId(targetTaskId);
+        target.setFilePath(source.getFilePath());
+        target.setLineNumber(source.getLineNumber());
+        target.setRiskType(source.getRiskType());
+        target.setRiskLevel(source.getRiskLevel());
+        target.setTitle(source.getTitle());
+        target.setDescription(source.getDescription());
+        target.setReason(source.getReason());
+        target.setEvidence(source.getEvidence());
+        target.setActionLevel(source.getActionLevel());
+        target.setSuggestion(source.getSuggestion());
+        target.setConfidence(source.getConfidence());
+        target.setNeedHumanCheck(source.getNeedHumanCheck());
+        return target;
     }
 
     private void saveChangedFiles(Long taskId, List<GitHubChangedFile> changedFiles) {
@@ -326,16 +410,15 @@ public class ReviewTaskService {
             return;
         }
 
-        List<ReviewFile> files = changedFiles.stream()
+        List<ReviewFile> files = diffPreprocessor.preprocess(changedFiles).stream()
                 .map(file -> toReviewFile(taskId, file))
                 .toList();
 
         reviewFileMapper.insertBatch(files);
     }
 
-    private ReviewFile toReviewFile(Long taskId, GitHubChangedFile changedFile) {
-        // ── P0：Diff 预处理，在保存文件前决定跳过策略 ──
-        DiffPreprocessor.Decision decision = diffPreprocessor.evaluate(changedFile);
+    private ReviewFile toReviewFile(Long taskId, DiffPreprocessor.PreparedFile preparedFile) {
+        GitHubChangedFile changedFile = preparedFile.file();
 
         ReviewFile file = new ReviewFile();
         file.setTaskId(taskId);
@@ -345,9 +428,12 @@ public class ReviewTaskService {
         file.setAdditions(defaultInt(changedFile.getAdditions()));
         file.setDeletions(defaultInt(changedFile.getDeletions()));
         file.setChanges(defaultInt(changedFile.getChanges()));
-        file.setPatch(changedFile.getPatch());
-        file.setSkipped(decision.skipped());
-        file.setSkipReason(decision.skipReason());
+        file.setPatch(preparedFile.analyzedPatch());
+        file.setOriginalPatchLength(preparedFile.originalPatchLength());
+        file.setAnalyzedPatchLength(preparedFile.analyzedPatchLength());
+        file.setTruncated(preparedFile.truncated());
+        file.setSkipped(preparedFile.skipped());
+        file.setSkipReason(preparedFile.skipReason());
         file.setCreatedAt(LocalDateTime.now());
 
         return file;
@@ -459,6 +545,9 @@ public class ReviewTaskService {
                 .deletions(file.getDeletions())
                 .changes(file.getChanges())
                 .aiSummary(file.getAiSummary())
+                .originalPatchLength(file.getOriginalPatchLength())
+                .analyzedPatchLength(file.getAnalyzedPatchLength())
+                .truncated(file.getTruncated())
                 .skipped(file.getSkipped())
                 .skipReason(file.getSkipReason())
                 .build();

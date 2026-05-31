@@ -36,3 +36,12 @@ ai:
 
 rate-limit:
   enabled: false
+
+review:
+  ai:
+    file-review-concurrency: 3
+    file-review-timeout-seconds: 60
+  diff:
+    max-files: 30
+    max-file-patch-chars: 12000
+    max-total-patch-chars: 100000

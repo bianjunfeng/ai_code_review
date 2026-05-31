@@ -16,6 +16,9 @@ public class ReviewFileVO {
     private Integer deletions;
     private Integer changes;
     private String aiSummary;
+    private Integer originalPatchLength;
+    private Integer analyzedPatchLength;
+    private Boolean truncated;
     private Boolean skipped;
     private String skipReason;
 }

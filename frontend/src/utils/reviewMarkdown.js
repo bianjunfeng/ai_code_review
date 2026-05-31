@@ -14,6 +14,7 @@ export function buildReviewMarkdown(report, comments = []) {
     '',
     `风险等级：${safeReport.riskLevel || '-'}`,
     `风险分数：${safeReport.riskScore ?? '-'}`,
+    `文件统计：总数 ${safeReport.totalFileCount ?? 0}，已分析 ${safeReport.analyzedFileCount ?? 0}，跳过 ${safeReport.skippedFileCount ?? 0}，截断 ${safeReport.truncatedFileCount ?? 0}，失败 ${safeReport.failedFileCount ?? 0}`,
     '',
     `PR：${prInfo.title || '未返回标题'}`,
     `作者：${prInfo.author || '-'}`,

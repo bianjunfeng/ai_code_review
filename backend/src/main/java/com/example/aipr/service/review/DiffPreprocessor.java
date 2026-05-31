@@ -1,10 +1,14 @@
 package com.example.aipr.service.review;
 
+import com.example.aipr.config.ReviewProperties;
 import com.example.aipr.service.github.GitHubChangedFile;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -16,7 +20,10 @@ import java.util.List;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class DiffPreprocessor {
+
+    private final ReviewProperties reviewProperties;
 
     // ── 目录模式：路径中包含这些目录直接跳过 ──
     private static final List<String> SKIP_DIRECTORIES = Arrays.asList(
@@ -47,6 +54,22 @@ public class DiffPreprocessor {
     public static final String REASON_GENERATED_FILE = "GENERATED_FILE";
     public static final String REASON_PATCH_EMPTY = "PATCH_EMPTY";
     public static final String REASON_UNSUPPORTED_FILE_TYPE = "UNSUPPORTED_FILE_TYPE";
+    public static final String REASON_FILE_COUNT_LIMIT = "FILE_COUNT_LIMIT";
+    public static final String REASON_TOTAL_PATCH_LIMIT = "TOTAL_PATCH_LIMIT";
+
+    private static final List<String> HIGH_PRIORITY_EXTENSIONS = Arrays.asList(
+            ".java", ".kt", ".kts", ".go", ".rs", ".py", ".js", ".jsx",
+            ".ts", ".tsx", ".vue", ".c", ".h", ".cpp", ".cc", ".cxx",
+            ".cs", ".php", ".rb", ".swift", ".scala", ".sql"
+    );
+
+    private static final List<String> MEDIUM_PRIORITY_EXTENSIONS = Arrays.asList(
+            ".xml", ".yml", ".yaml", ".json", ".properties", ".toml", ".gradle"
+    );
+
+    private static final List<String> LOW_PRIORITY_EXTENSIONS = Arrays.asList(
+            ".md", ".txt", ".rst", ".adoc"
+    );
 
     /**
      * 判断文件是否需要跳过 AI Review。
@@ -96,6 +119,124 @@ public class DiffPreprocessor {
     }
 
     /**
+     * 基于文件类型、单文件长度和 PR 总 patch 预算生成最终保存决策。
+     */
+    public List<PreparedFile> preprocess(List<GitHubChangedFile> files) {
+        if (files == null || files.isEmpty()) {
+            return List.of();
+        }
+
+        int maxFiles = Math.max(0, reviewProperties.getDiff().getMaxFiles());
+        int maxFilePatchChars = Math.max(0, reviewProperties.getDiff().getMaxFilePatchChars());
+        int maxTotalPatchChars = Math.max(0, reviewProperties.getDiff().getMaxTotalPatchChars());
+
+        List<PreparedFile> prepared = new ArrayList<>();
+        List<Candidate> candidates = new ArrayList<>();
+
+        for (int index = 0; index < files.size(); index++) {
+            GitHubChangedFile file = files.get(index);
+            Decision decision = evaluate(file);
+            int originalPatchLength = patchLength(file);
+
+            if (decision.skipped()) {
+                prepared.add(PreparedFile.skip(file, decision.skipReason(), originalPatchLength));
+                continue;
+            }
+
+            prepared.add(null);
+            candidates.add(new Candidate(index, file, originalPatchLength, priority(file.getFilename())));
+        }
+
+        candidates.sort(Comparator
+                .comparingInt(Candidate::priority)
+                .thenComparingInt(Candidate::index));
+
+        int analyzedFileCount = 0;
+        int totalPatchChars = 0;
+        for (Candidate candidate : candidates) {
+            GitHubChangedFile file = candidate.file();
+            if (analyzedFileCount >= maxFiles) {
+                prepared.set(candidate.index(), PreparedFile.skip(file, REASON_FILE_COUNT_LIMIT, candidate.originalPatchLength()));
+                log.info("[DiffPreprocessor] 超过最大分析文件数, path={}, maxFiles={}", file.getFilename(), maxFiles);
+                continue;
+            }
+
+            String originalPatch = file.getPatch();
+            String analyzedPatch = truncatePatch(originalPatch, maxFilePatchChars);
+            int analyzedPatchLength = analyzedPatch == null ? 0 : analyzedPatch.length();
+            boolean truncated = originalPatch != null && analyzedPatchLength < originalPatch.length();
+
+            if (totalPatchChars + analyzedPatchLength > maxTotalPatchChars) {
+                prepared.set(candidate.index(), PreparedFile.skip(file, REASON_TOTAL_PATCH_LIMIT, candidate.originalPatchLength()));
+                log.info("[DiffPreprocessor] 超过 PR patch 总预算, path={}, currentTotal={}, patchLength={}, maxTotal={}",
+                        file.getFilename(), totalPatchChars, analyzedPatchLength, maxTotalPatchChars);
+                continue;
+            }
+
+            totalPatchChars += analyzedPatchLength;
+            analyzedFileCount++;
+            prepared.set(candidate.index(), PreparedFile.analyze(file, analyzedPatch, candidate.originalPatchLength(), analyzedPatchLength, truncated));
+        }
+
+        return prepared;
+    }
+
+    private String truncatePatch(String patch, int maxFilePatchChars) {
+        if (patch == null) {
+            return null;
+        }
+        if (patch.length() <= maxFilePatchChars) {
+            return patch;
+        }
+        return patch.substring(0, maxFilePatchChars);
+    }
+
+    private int patchLength(GitHubChangedFile file) {
+        return file.getPatch() == null ? 0 : file.getPatch().length();
+    }
+
+    private int priority(String filePath) {
+        if (filePath == null || filePath.isBlank()) {
+            return 100;
+        }
+
+        String lowerPath = filePath.toLowerCase();
+        if (isTestPath(lowerPath)) {
+            return 20;
+        }
+        if (endsWithAny(lowerPath, HIGH_PRIORITY_EXTENSIONS)) {
+            return 10;
+        }
+        if (endsWithAny(lowerPath, MEDIUM_PRIORITY_EXTENSIONS)) {
+            return 40;
+        }
+        if (endsWithAny(lowerPath, LOW_PRIORITY_EXTENSIONS)) {
+            return 80;
+        }
+        return 60;
+    }
+
+    private boolean isTestPath(String lowerPath) {
+        return lowerPath.contains("/test/")
+                || lowerPath.contains("\\test\\")
+                || lowerPath.contains("__tests__/")
+                || lowerPath.endsWith("test.java")
+                || lowerPath.endsWith("spec.ts")
+                || lowerPath.endsWith("spec.js")
+                || lowerPath.endsWith(".test.ts")
+                || lowerPath.endsWith(".test.js");
+    }
+
+    private boolean endsWithAny(String lowerPath, List<String> suffixes) {
+        for (String suffix : suffixes) {
+            if (lowerPath.endsWith(suffix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * 预处理决策。
      */
     public record Decision(boolean skipped, String skipReason) {
@@ -108,6 +249,32 @@ public class DiffPreprocessor {
 
         public static Decision skip(String reason) {
             return new Decision(true, reason);
+        }
+    }
+
+    private record Candidate(int index, GitHubChangedFile file, int originalPatchLength, int priority) {
+    }
+
+    public record PreparedFile(
+            GitHubChangedFile file,
+            String analyzedPatch,
+            int originalPatchLength,
+            int analyzedPatchLength,
+            boolean truncated,
+            boolean skipped,
+            String skipReason
+    ) {
+
+        public static PreparedFile analyze(GitHubChangedFile file,
+                                           String analyzedPatch,
+                                           int originalPatchLength,
+                                           int analyzedPatchLength,
+                                           boolean truncated) {
+            return new PreparedFile(file, analyzedPatch, originalPatchLength, analyzedPatchLength, truncated, false, null);
+        }
+
+        public static PreparedFile skip(GitHubChangedFile file, String skipReason, int originalPatchLength) {
+            return new PreparedFile(file, null, originalPatchLength, 0, false, true, skipReason);
         }
     }
 }

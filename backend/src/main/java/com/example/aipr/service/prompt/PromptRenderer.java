@@ -30,6 +30,12 @@ public class PromptRenderer {
         prompt.append("源分支：").append(context.getSourceBranch() != null ? context.getSourceBranch() : "未指定").append("\n");
         prompt.append("目标分支：").append(context.getTargetBranch() != null ? context.getTargetBranch() : "未指定").append("\n");
 
+        // 注入 commit 摘要
+        String commitSummary = context.getCommitSummary();
+        if (commitSummary != null && !commitSummary.isBlank()) {
+            prompt.append("PR 提交记录：").append(commitSummary).append("\n");
+        }
+
         prompt.append("\n=== 待评审文件 ===\n");
         prompt.append("文件路径：").append(context.getFilePath() != null ? context.getFilePath() : "").append("\n");
         prompt.append("文件状态：").append(context.getFileStatus() != null ? context.getFileStatus() : "").append("\n");
@@ -42,13 +48,17 @@ public class PromptRenderer {
             prompt.append("该文件无内容变更或无法获取变更内容。\n");
         } else {
             boolean truncated = patch.length() > MAX_PATCH_LENGTH;
-            context.setTruncated(truncated);
+            boolean upstreamTruncated = Boolean.TRUE.equals(context.getTruncated());
+            context.setTruncated(truncated || upstreamTruncated);
             if (truncated) {
                 patch = patch.substring(0, MAX_PATCH_LENGTH);
                 prompt.append("代码变更 (diff)：\n").append(patch).append("\n");
                 prompt.append("\n[注意：diff 已截断，超出长度限制]\n");
             } else {
                 prompt.append("代码变更 (diff)：\n").append(patch).append("\n");
+                if (upstreamTruncated) {
+                    prompt.append("\n[注意：diff 已截断，仅分析部分变更]\n");
+                }
             }
         }
 

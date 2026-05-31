@@ -121,6 +121,7 @@ public class ReviewTaskExecutor {
                 .prAuthor(task.getPrAuthor())
                 .sourceBranch(task.getSourceBranch())
                 .targetBranch(task.getTargetBranch())
+                .commitSummary(task.getCommitSummary())
                 .filePath(file.getFilePath())
                 .fileStatus(file.getFileStatus())
                 .language(file.getLanguage())
@@ -128,6 +129,7 @@ public class ReviewTaskExecutor {
                 .deletions(file.getDeletions())
                 .changes(file.getChanges())
                 .patch(file.getPatch())
+                .truncated(file.getTruncated())
                 .staticRuleFindings(staticRuleFindings)
                 .build();
     }

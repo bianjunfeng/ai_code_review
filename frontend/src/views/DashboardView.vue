@@ -231,7 +231,7 @@ async function loadConfigStatus() {
   try {
     configStatus.value = await getConfigStatus()
   } catch (e) {
-    console.warn('Failed to load config status:', e)
+    // silently ignore config status load failure
   }
 }
 
@@ -241,7 +241,7 @@ async function loadBackendStats() {
     const failuresData = await getRecentFailures({ page: 1, pageSize: 3 })
     recentFailures.value = failuresData?.records || []
   } catch (e) {
-    console.warn('Failed to load backend stats:', e)
+    // silently ignore backend stats load failure
   }
 }
 

@@ -40,6 +40,14 @@
       title="已命中历史报告，无需重新 AI 分析。"
     />
 
+    <el-alert
+      v-if="diffLimitNotice"
+      type="warning"
+      show-icon
+      :closable="false"
+      :title="diffLimitNotice"
+    />
+
     <!-- P0 进度横幅：非终态时展示轮询进度 -->
     <div v-if="isPollingStatus(task?.status)" class="progress-banner">
       <div class="progress-top">
@@ -85,13 +93,23 @@
                   <div class="file-meta">
                     <el-tag effect="plain">{{ file.fileStatus || '-' }}</el-tag>
                     <el-tag v-if="file.language" type="info" effect="plain">{{ file.language }}</el-tag>
+                    <el-tag v-if="file.skipped" type="warning" effect="plain">已跳过</el-tag>
+                    <el-tag v-if="file.truncated" type="warning" effect="plain">已截断</el-tag>
                     <span>+{{ file.additions || 0 }} / -{{ file.deletions || 0 }}</span>
+                    <span v-if="formatPatchChars(file)">Patch {{ formatPatchChars(file) }}</span>
                   </div>
                 </div>
                 <RiskLevelTag v-if="highestRiskByFile[file.filePath]" :risk-level="highestRiskByFile[file.filePath]" />
               </div>
 
-              <p class="file-summary">{{ file.aiSummary || file.skipReason || '暂无文件级总结。' }}</p>
+              <div v-if="file.truncated" class="file-limit-note">
+                该文件 diff 超过单文件限制，仅分析前 {{ formatInteger(file.analyzedPatchLength || 0) }} / {{ formatInteger(file.originalPatchLength || 0) }} 字符。
+              </div>
+              <div v-else-if="file.skipped" class="file-limit-note">
+                该文件未进入 AI 分析：{{ formatSkipReason(file.skipReason) }}。
+              </div>
+
+              <p class="file-summary">{{ file.aiSummary || formatSkipReason(file.skipReason) || '暂无文件级总结。' }}</p>
 
               <div v-if="commentsByFile[file.filePath]?.length" class="file-comments">
                 <RiskItemCard
@@ -256,6 +274,20 @@ onBeforeUnmount(() => {
 })
 
 const prUrl = computed(() => report.value?.prInfo?.url || task.value?.prUrl || '')
+
+const diffLimitNotice = computed(() => {
+  if (!report.value) return ''
+  const skipped = Number(report.value.skippedFileCount || 0)
+  const truncated = Number(report.value.truncatedFileCount || 0)
+  const parts = []
+  if (skipped > 0) {
+    parts.push(`本次有 ${skipped} 个文件因类型、空 patch 或总量限制未进入 AI 分析`)
+  }
+  if (truncated > 0) {
+    parts.push(`${truncated} 个文件 diff 已截断，仅分析部分内容`)
+  }
+  return parts.join('；')
+})
 
 const filteredComments = computed(() => {
   if (!riskFilter.value) return comments.value
@@ -447,6 +479,29 @@ function openExternal(url) {
     window.open(url, '_blank', 'noreferrer')
   }
 }
+
+function formatPatchChars(file) {
+  const original = Number(file?.originalPatchLength || 0)
+  if (!Number.isFinite(original) || original <= 0) {
+    return ''
+  }
+  const analyzed = Number(file?.analyzedPatchLength || 0)
+  return `${formatInteger(analyzed)} / ${formatInteger(original)} 字符`
+}
+
+function formatSkipReason(reason) {
+  const normalized = String(reason || '').toUpperCase()
+  const labels = {
+    LOCK_FILE: '锁文件暂不分析',
+    BINARY_FILE: '二进制或生成文件暂不分析',
+    GENERATED_FILE: '生成目录文件暂不分析',
+    PATCH_EMPTY: '无可分析 diff',
+    UNSUPPORTED_FILE_TYPE: '暂不支持的文件类型',
+    FILE_COUNT_LIMIT: '超过本次最大分析文件数',
+    TOTAL_PATCH_LIMIT: '超过本次 PR patch 总量限制'
+  }
+  return labels[normalized] || reason || ''
+}
 </script>
 
 <style scoped>
@@ -571,6 +626,16 @@ h2 {
   margin: 12px 0 0;
   color: #42526a;
   line-height: 1.7;
+}
+
+.file-limit-note {
+  margin-top: 12px;
+  padding: 10px 12px;
+  color: #8a5a00;
+  background: #fff8e6;
+  border: 1px solid #f2d58b;
+  border-radius: 8px;
+  font-size: 13px;
 }
 
 .file-comments {
