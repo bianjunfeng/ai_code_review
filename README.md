@@ -620,6 +620,61 @@ Query 参数：page, pageSize, taskId, success, modelName
 
 ------
 
+### 8.8 监控统计
+
+#### 查询任务统计
+
+```http
+GET /api/review-tasks/statistics
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "totalTasks": 27,
+    "todayTasks": 15,
+    "successTasks": 21,
+    "failedTasks": 6,
+    "runningTasks": 0,
+    "highRiskTasks": 15,
+    "mediumRiskTasks": 2,
+    "lowRiskTasks": 4,
+    "cacheHits": 2,
+    "avgDurationMs": 0.0
+  }
+}
+```
+
+`cacheHits` 表示命中历史报告缓存的任务数，工作台“缓存命中”卡片使用该字段。
+
+#### 查询缓存统计
+
+```http
+GET /api/review-cache/statistics
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "cacheHits": 2,
+    "cacheMisses": 25,
+    "cacheHitRate": 7.4,
+    "savedModelCalls": 2,
+    "savedTokensEstimate": 10000
+  }
+}
+```
+
+------
+
 ## 9. 环境要求
 
 ### 9.1 基础环境

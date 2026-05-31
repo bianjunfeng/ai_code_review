@@ -15,5 +15,6 @@ public class ReviewTaskStatisticsVO {
     private Long highRiskTasks;
     private Long mediumRiskTasks;
     private Long lowRiskTasks;
+    private Long cacheHits;
     private Double avgDurationMs;
 }
