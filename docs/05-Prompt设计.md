@@ -155,6 +155,30 @@ Diff 内容:
 4. 对低风险大文件只保留摘要，例如文件路径、状态、增删行数、主要变更片段。
 5. 被裁剪的上下文需要在 Prompt 中标记：`当前 diff 已被截断，模型需要避免对缺失上下文作确定性结论。`
 
+### 4.4 Prompt 分层设计
+
+系统 Prompt 分为两个层级：
+
+| 层级 | Prompt | 调用时机 | callType | 输出 |
+| --- | --- | --- | --- | --- |
+| 文件级 | `renderFileReviewPrompt`（文件级评审 Prompt） | 每个变更文件并发执行 | `FILE_REVIEW` | `FileReviewResult`（summary + comments） |
+| PR 级 | `renderPrSummaryPrompt`（PR 总结 Prompt） | `finishTask` 汇总阶段调用一次 | `PR_SUMMARY` | `PrSummaryResult`（summary + finalReview + testSuggestions） |
+
+**文件级评审 Prompt**（`renderFileReviewPrompt`）负责：
+- 接收单个文件的 diff + 静态规则扫描结果
+- 输出该文件的变更摘要和风险建议
+
+**PR 总结 Prompt**（`renderPrSummaryPrompt`）负责：
+- 接收全部文件级 summary 列表 + 风险统计 + 跳过/失败/截断计数
+- 输出 PR 总体摘要、最终评审结论、测试建议
+
+**分层设计优势**：
+1. 单文件失败不影响 PR 级总结生成
+2. token 预算可控（单文件 diff 截断 vs 全量上下文）
+3. PR 总结可基于文件级结果二次生成，质量更高
+
+如果 PR 总结调用失败，系统回退到规则生成的 `buildSummary`（简单文件列表拼接）和 `buildFinalReview`（基于风险等级的固定话术），不影响任务状态。
+
 ## 5. 统一输出 JSON 设计
 
 ### 5.1 统一报告 JSON

@@ -6,6 +6,7 @@ import com.example.aipr.dto.FileReviewResult;
 import com.example.aipr.enums.ErrorCode;
 import com.example.aipr.service.prompt.AiReviewOutputParser;
 import com.example.aipr.service.prompt.PromptRenderer;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +23,8 @@ class AiReviewServiceTest {
         aiReviewService = new AiReviewService(
                 new PromptRenderer(),
                 new AiReviewOutputParser(),
-                fakeLlmClient
+                fakeLlmClient,
+                new ObjectMapper()
         );
     }
 
