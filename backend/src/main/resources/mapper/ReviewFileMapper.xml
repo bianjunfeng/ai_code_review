@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.aipr.mapper.ReviewFileMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.aipr.entity.ReviewFile">
+        <id column="id" property="id"/>
+        <result column="task_id" property="taskId"/>
+        <result column="file_path" property="filePath"/>
+        <result column="file_status" property="fileStatus"/>
+        <result column="language" property="language"/>
+        <result column="additions" property="additions"/>
+        <result column="deletions" property="deletions"/>
+        <result column="changes" property="changes"/>
+        <result column="patch" property="patch"/>
+        <result column="ai_summary" property="aiSummary"/>
+        <result column="skipped" property="skipped"/>
+        <result column="skip_reason" property="skipReason"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, task_id, file_path, file_status, language, additions, deletions,
+        changes, patch, ai_summary, skipped, skip_reason, created_at
+    </sql>
+
+    <select id="findByTaskId" resultMap="BaseResultMap">
+        SELECT * FROM review_file
+        WHERE task_id = #{taskId}
+        ORDER BY created_at ASC
+    </select>
+
+    <select id="findActiveByTaskId" resultMap="BaseResultMap">
+        SELECT * FROM review_file
+        WHERE task_id = #{taskId}
+          AND skipped = 0
+        ORDER BY created_at ASC
+    </select>
+
+    <select id="countByTaskId" resultType="int">
+        SELECT COUNT(*) FROM review_file WHERE task_id = #{taskId}
+    </select>
+
+    <insert id="insertBatch" parameterType="java.util.List">
+        INSERT INTO review_file (task_id, file_path, file_status, language, additions, deletions, changes, patch, skipped, skip_reason)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.taskId}, #{item.filePath}, #{item.fileStatus}, #{item.language},
+             #{item.additions}, #{item.deletions}, #{item.changes}, #{item.patch},
+             #{item.skipped}, #{item.skipReason})
+        </foreach>
+    </insert>
+
+</mapper>

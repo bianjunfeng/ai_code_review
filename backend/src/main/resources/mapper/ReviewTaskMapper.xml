@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.aipr.mapper.ReviewTaskMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.aipr.entity.ReviewTask">
+        <id column="id" property="id"/>
+        <result column="pr_url" property="prUrl"/>
+        <result column="owner_name" property="ownerName"/>
+        <result column="repo_name" property="repoName"/>
+        <result column="pr_number" property="prNumber"/>
+        <result column="pr_title" property="prTitle"/>
+        <result column="pr_description" property="prDescription"/>
+        <result column="pr_author" property="prAuthor"/>
+        <result column="source_branch" property="sourceBranch"/>
+        <result column="target_branch" property="targetBranch"/>
+        <result column="status" property="status"/>
+        <result column="risk_score" property="riskScore"/>
+        <result column="risk_level" property="riskLevel"/>
+        <result column="summary" property="summary"/>
+        <result column="final_review" property="finalReview"/>
+        <result column="result_json" property="resultJson"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="head_sha" property="headSha"/>
+        <result column="base_sha" property="baseSha"/>
+        <result column="model_name" property="modelName"/>
+        <result column="prompt_version" property="promptVersion"/>
+        <result column="cached_from_task_id" property="cachedFromTaskId"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, pr_url, owner_name, repo_name, pr_number, pr_title, pr_description, pr_author,
+        source_branch, target_branch, status, risk_score, risk_level,
+        summary, final_review, result_json, error_message,
+        head_sha, base_sha, model_name, prompt_version, cached_from_task_id,
+        created_at, updated_at
+    </sql>
+
+    <select id="findByPrUrl" resultMap="BaseResultMap">
+        SELECT * FROM review_task
+        WHERE pr_url = #{prUrl}
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="findByStatus" resultMap="BaseResultMap">
+        SELECT * FROM review_task
+        WHERE status = #{status}
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="countByRepoAndPr" resultType="int">
+        SELECT COUNT(*)
+        FROM review_task
+        WHERE owner_name = #{ownerName}
+          AND repo_name = #{repoName}
+          AND pr_number = #{prNumber}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE review_task
+        SET status = #{status},
+            updated_at = NOW()
+        WHERE id = #{taskId}
+    </update>
+
+    <update id="updateRiskScore">
+        UPDATE review_task
+        SET risk_score = #{riskScore},
+            risk_level = #{riskLevel},
+            summary = #{summary},
+            final_review = #{finalReview},
+            updated_at = NOW()
+        WHERE id = #{taskId}
+    </update>
+
+    <select id="findLatestSuccessTaskForCache" resultMap="BaseResultMap">
+        SELECT * FROM review_task
+        WHERE owner_name = #{ownerName}
+          AND repo_name = #{repoName}
+          AND pr_number = #{prNumber}
+          AND head_sha = #{headSha}
+          AND model_name = #{modelName}
+          AND prompt_version = #{promptVersion}
+          AND status = 'SUCCESS'
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+
+</mapper>

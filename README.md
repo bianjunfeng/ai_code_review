@@ -74,6 +74,7 @@ Diff patch
 
 | 等级   | 含义                     |
 | ------ | ------------------------ |
+| CRITICAL | 严重风险，建议修复并人工复核 |
 | HIGH   | 高风险，建议必须修改     |
 | MEDIUM | 中风险，建议优先修改     |
 | LOW    | 低风险，可根据情况优化   |
@@ -92,6 +93,8 @@ Diff patch
 风险等级
 问题描述
 原因分析
+风险证据
+处理级别
 修改建议
 置信度
 是否需要人工确认
@@ -337,6 +340,7 @@ MVP 阶段主要包括以下表：
 | review_task     | Review 任务表                 |
 | review_file     | PR 变更文件表                 |
 | review_comment  | AI Review 建议表              |
+| model_usage_log | 模型用量日志表                |
 | model_config    | 模型配置表                    |
 | prompt_template | Prompt 模板表                 |
 | review_skill    | Review Skill 配置表，二期扩展 |
@@ -344,6 +348,14 @@ MVP 阶段主要包括以下表：
 ------
 
 ## 8. 核心接口
+
+当前 dev 状态说明：
+
+```text
+已实现：健康检查、PR 预览、Review 任务创建、任务列表、任务详情、文件列表、建议列表、报告详情、配置状态、模型用量监控和监控统计。
+已补齐：GitHub PR 列表、单个 PR 本地评审状态。
+待补齐：GitHub Review Markdown 后端导出。
+```
 
 ### 8.1 健康检查
 
@@ -366,19 +378,15 @@ GET /api/health
 
 ------
 
-### 8.2 GitHub PR 预览
+### 8.2 GitHub PR 列表
 
 ```http
-POST /api/github/preview
+GET /api/github/pulls
 ```
 
-请求示例：
+当前状态：后端已实现，用于 PR 工作台直接选择仓库 PR 后发起评审。
 
-```json
-{
-  "prUrl": "https://github.com/example/demo/pull/12"
-}
-```
+Query 参数：owner, repo, state, page, pageSize
 
 响应示例：
 
@@ -387,25 +395,40 @@ POST /api/github/preview
   "code": 0,
   "message": "success",
   "data": {
-    "owner": "example",
-    "repo": "demo",
-    "pullNumber": 12,
-    "title": "待接入 GitHub API 的 PR 预览",
-    "author": "unknown",
-    "sourceBranch": "head",
-    "targetBranch": "base",
-    "state": "OPEN",
-    "additions": 0,
-    "deletions": 0,
-    "changedFiles": 0,
-    "files": []
+    "records": [
+      {
+        "owner": "example",
+        "repo": "demo",
+        "pullNumber": 12,
+        "title": "fix login bug",
+        "author": "demo-user",
+        "state": "OPEN",
+        "sourceBranch": "feature/login",
+        "targetBranch": "main",
+        "reviewed": false,
+        "latestTaskId": null,
+        "cachedAvailable": false
+      }
+    ],
+    "page": 1,
+    "pageSize": 10
   }
 }
 ```
 
 ------
 
-### 8.3 创建 Review 任务
+### 8.3 查询单个 PR 本地评审状态
+
+```http
+GET /api/github/pulls/{owner}/{repo}/{pullNumber}/review-state
+```
+
+用于查询某个 PR 是否已有历史评审任务，以及当前 head commit 是否可复用历史成功报告。
+
+------
+
+### 8.4 创建 Review 任务
 
 ```http
 POST /api/review-tasks
@@ -415,7 +438,8 @@ POST /api/review-tasks
 
 ```json
 {
-  "prUrl": "https://github.com/example/demo/pull/12"
+  "prUrl": "https://github.com/example/demo/pull/12",
+  "forceRefresh": false
 }
 ```
 
@@ -427,17 +451,243 @@ POST /api/review-tasks
   "message": "success",
   "data": {
     "taskId": 10001,
-    "status": "PENDING"
+    "status": "PENDING",
+    "cached": false,
+    "cachedFromTaskId": null
   }
 }
 ```
 
 ------
 
-### 8.4 查询 Review 报告
+### 8.5 查询 Review 任务列表
+
+```http
+GET /api/review-tasks
+```
+
+Query 参数：page, pageSize, status, riskLevel, keyword, createdFrom, createdTo
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "records": [
+      {
+        "taskId": 12,
+        "prUrl": "https://github.com/example/demo/pull/12",
+        "prTitle": "fix login bug",
+        "status": "SUCCESS",
+        "riskScore": 78,
+        "riskLevel": "HIGH",
+        "cached": false,
+        "createdAt": "2026-05-30 20:01:00"
+      }
+    ],
+    "page": 1,
+    "pageSize": 10,
+    "total": 1,
+    "pages": 1
+  }
+}
+```
+
+------
+
+### 8.6 查询 Review 报告
 
 ```http
 GET /api/review-tasks/{taskId}/report
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "taskId": 12,
+    "prInfo": {
+      "title": "fix login bug",
+      "author": "demo-user",
+      "url": "https://github.com/example/demo/pull/12"
+    },
+    "summary": "本次 PR 主要修改了登录认证逻辑。",
+    "riskScore": 78,
+    "riskLevel": "HIGH",
+    "riskItems": [
+      {
+        "filePath": "src/main/java/com/demo/auth/JwtUtil.java",
+        "line": 35,
+        "riskLevel": "HIGH",
+        "riskType": "SECURITY_RISK",
+        "title": "JWT 密钥存在硬编码风险",
+        "description": "密钥直接写在源码中，公开仓库可能导致泄露。",
+        "reason": "密钥属于敏感配置，硬编码会扩大泄露影响面。",
+        "evidence": "private static final String SECRET = \"123456\";",
+        "actionLevel": "MUST_FIX",
+        "suggestion": "建议改为从环境变量或安全配置读取。",
+        "confidence": 0.92,
+        "needHumanCheck": true
+      }
+    ],
+    "finalReview": "建议修复高风险问题后再合并。"
+  }
+}
+```
+
+------
+
+### 8.7 模型用量监控
+
+#### 查询用量概览
+
+```http
+GET /api/model-usage/summary
+```
+
+Query 参数：from, to, modelName
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "totalCalls": 18,
+    "successCalls": 17,
+    "failedCalls": 1,
+    "successRate": 94.44,
+    "totalPromptTokens": 12345,
+    "totalCompletionTokens": 4321,
+    "totalTokens": 16666,
+    "avgLatencyMs": 1830
+  }
+}
+```
+
+#### 查询任务用量
+
+```http
+GET /api/model-usage/tasks/{taskId}
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "taskId": 12,
+    "totalCalls": 5,
+    "successCalls": 5,
+    "failedCalls": 0,
+    "totalPromptTokens": 8500,
+    "totalCompletionTokens": 2100,
+    "totalTokens": 10600,
+    "avgLatencyMs": 1850
+  }
+}
+```
+
+#### 查询调用明细
+
+```http
+GET /api/model-usage/logs
+```
+
+Query 参数：page, pageSize, taskId, success, modelName
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "records": [
+      {
+        "id": 1,
+        "taskId": 12,
+        "fileId": 31,
+        "provider": "openai-compatible",
+        "modelName": "deepseek-chat",
+        "callType": "FILE_REVIEW",
+        "promptTokens": 1200,
+        "completionTokens": 360,
+        "totalTokens": 1560,
+        "latencyMs": 1800,
+        "success": true,
+        "createdAt": "2026-05-30 20:03:00"
+      }
+    ],
+    "page": 1,
+    "pageSize": 10,
+    "total": 1,
+    "pages": 1
+  }
+}
+```
+
+------
+
+### 8.8 监控统计
+
+#### 查询任务统计
+
+```http
+GET /api/review-tasks/statistics
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "totalTasks": 27,
+    "todayTasks": 15,
+    "successTasks": 21,
+    "failedTasks": 6,
+    "runningTasks": 0,
+    "highRiskTasks": 15,
+    "mediumRiskTasks": 2,
+    "lowRiskTasks": 4,
+    "cacheHits": 2,
+    "avgDurationMs": 0.0
+  }
+}
+```
+
+`cacheHits` 表示命中历史报告缓存的任务数，工作台“缓存命中”卡片使用该字段。
+
+#### 查询缓存统计
+
+```http
+GET /api/review-cache/statistics
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "cacheHits": 2,
+    "cacheMisses": 25,
+    "cacheHitRate": 7.4,
+    "savedModelCalls": 2,
+    "savedTokensEstimate": 10000
+  }
+}
 ```
 
 ------

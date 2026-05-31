@@ -15,7 +15,6 @@
 .env.*
 !.env.example
 
-*.env
 *.secret
 *.secrets
 *.key
@@ -26,19 +25,6 @@
 *.cer
 *.jks
 *.keystore
-
-# API Key / Token / 凭证类文件
-*token*
-*Token*
-*secret*
-*Secret*
-*apikey*
-*api-key*
-*ApiKey*
-*credential*
-*Credential*
-*credentials*
-*Credentials*
 
 # 常见云厂商 / 第三方服务凭证
 *.json.key
@@ -54,10 +40,29 @@ aws-credentials
 
 
 # =========================================================
-# 2. Spring Boot / Java 本地配置
+# 2. Claude / AI 工具本地配置
 # =========================================================
 
-# 本地配置文件
+.claude/settings.local.json
+
+ai-keys.*
+llm-keys.*
+openai-key.*
+deepseek-key.*
+dashscope-key.*
+qwen-key.*
+
+prompt-debug/
+llm-debug/
+ai-debug/
+chat-history/
+review-output-local/
+
+
+# =========================================================
+# 3. Spring Boot / Java 本地配置
+# =========================================================
+
 application-local.yml
 application-local.yaml
 application-local.properties
@@ -74,7 +79,7 @@ bootstrap-local.yml
 bootstrap-local.yaml
 bootstrap-local.properties
 
-# 注意：示例配置文件允许提交
+# 示例配置允许提交
 !application-example.yml
 !application-example.yaml
 !application-example.properties
@@ -83,37 +88,6 @@ bootstrap-local.properties
 target/
 *.class
 
-# Log file
-*.log
-
-# Local secrets
-.env
-*.env
-application-local.yml
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
-*.jar
-*.war
-*.ear
-
-# Frontend / backend build output
-target/
-node_modules/
-dist/
-selfprompt/
-# IDE
-.idea/
-.vscode/
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
 # Maven Wrapper 保留
 !.mvn/wrapper/maven-wrapper.jar
 
@@ -122,16 +96,21 @@ replay_pid*
 build/
 !gradle/wrapper/gradle-wrapper.jar
 
+# Package files
+*.jar
+*.war
+*.ear
+
 
 # =========================================================
-# 3. 前端依赖与构建产物
+# 4. 前端依赖与构建产物
 # =========================================================
 
 node_modules/
 dist/
-build/
 .vite/
 .cache/
+.cache-loader/
 .output/
 
 # npm / pnpm / yarn 日志
@@ -147,49 +126,53 @@ frontend/.env.*
 
 
 # =========================================================
-# 4. 日志与运行时文件
+# 5. 日志与运行时文件
 # =========================================================
 
 logs/
+log/
 *.log
 *.log.*
-log/
+
 runtime/
 tmp/
 temp/
 
-# Spring Boot 默认日志或临时文件
 *.pid
 *.seed
 *.pid.lock
 
 
 # =========================================================
-# 5. 数据库本地文件
+# 6. 数据库本地文件
 # =========================================================
 
-# H2 数据库文件
+# H2
 *.mv.db
 *.trace.db
 *.h2.db
 
-# SQLite，如果后续使用
+# SQLite
 *.sqlite
 *.sqlite3
 *.db
 
 # MySQL dump，避免误提交真实数据
-*.sql
 *.dump
 
-# 如果确实需要提交初始化 SQL，请放到指定目录并单独放行
+# 注意：不要全局忽略 *.sql，否则初始化 SQL / 设计 SQL 可能无法提交
+# 如需忽略本地导出的 SQL，建议放到 dumps/ 目录
+dumps/
+db-dumps/
+
+# 允许提交初始化 SQL
 !backend/src/main/resources/db/migration/*.sql
 !backend/src/main/resources/schema.sql
 !backend/src/main/resources/data.sql
 
 
 # =========================================================
-# 6. IDE / 编辑器配置
+# 7. IDE / 编辑器配置
 # =========================================================
 
 # IntelliJ IDEA
@@ -217,7 +200,7 @@ temp/
 
 
 # =========================================================
-# 7. 操作系统文件
+# 8. 操作系统文件
 # =========================================================
 
 # macOS
@@ -235,7 +218,7 @@ Desktop.ini
 
 
 # =========================================================
-# 8. 测试覆盖率与报告
+# 9. 测试覆盖率与报告
 # =========================================================
 
 coverage/
@@ -247,13 +230,13 @@ failsafe-reports/
 
 
 # =========================================================
-# 9. Docker / 部署本地配置
+# 10. Docker / 部署本地配置
 # =========================================================
 
+# Dockerfile 和 docker-compose.yml 通常需要提交
 docker-compose.override.yml
 docker-compose.local.yml
 
-# 本地部署脚本中的敏感变量
 deploy/.env
 deploy/.env.*
 deploy/*secret*
@@ -262,37 +245,11 @@ deploy/*credential*
 
 
 # =========================================================
-# 10. AI / 模型调用相关敏感文件
-# =========================================================
-
-# 避免提交模型 API Key、本地 Prompt 调试记录、真实调用日志
-ai-keys.*
-llm-keys.*
-openai-key.*
-deepseek-key.*
-dashscope-key.*
-qwen-key.*
-
-prompt-debug/
-llm-debug/
-ai-debug/
-chat-history/
-review-output-local/
-
-
-# =========================================================
 # 11. 项目生成文件
 # =========================================================
 
-# 后端临时分析结果
 review-result-local.json
 review-report-local.json
 github-pr-cache.json
 
-# 本地缓存
-.cache/
-.cache-loader/
-
-# Vite cache
-.vite/
-frontend/.vite/
+selfprompt/.claude/settings.local.json

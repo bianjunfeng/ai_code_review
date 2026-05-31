@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"D:\\\\code1\\\\ai_code_review\\\\frontend\")",
+      "Bash(mvn test)",
+      "Bash(npm run build)",
+      "Bash(mvn test -Dtest=AiReviewOutputParserTest)",
+      "Bash(npm run dev)",
+      "Bash(netstat -ano)",
+      "Bash(wmic process where processid=140704 get name,commandline)",
+      "Bash(tasklist /FI \"PID eq 140704\")",
+      "Bash(tasklist)",
+      "Bash(powershell -Command \"Get-Process -Id 140704 | Select-Object ProcessName,Path,CommandLine | Format-List\")",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s http://localhost:5173/src/main.js)",
+      "Bash(taskkill //F //PID 140704)",
+      "Bash(git fetch origin)",
+      "Bash(mvn test -q)",
+      "Bash(where mvn)",
+      "Bash(D:CodeCode_Appapache-maven-3.9.11binmvn.cmd test)",
+      "Bash(mvn test -Dtest=AiReviewServiceTest)",
+      "Bash(cmd.exe /c \"cd /d D:\\\\code1\\\\ai_code_review\\\\backend && mvn test -Dtest=AiReviewServiceTest\")",
+      "Bash(mvn compile test-compile)"
+    ]
+  }
+}

@@ -1,45 +1,300 @@
 package com.example.aipr.service.report;
 
-import com.example.aipr.enums.RiskType;
-import com.example.aipr.enums.Severity;
+import com.example.aipr.entity.ReviewComment;
+import com.example.aipr.entity.ReviewFile;
+import com.example.aipr.entity.ReviewTask;
+import com.example.aipr.enums.ReviewTaskStatus;
+import com.example.aipr.mapper.ReviewCommentMapper;
+import com.example.aipr.mapper.ReviewFileMapper;
+import com.example.aipr.service.review.ReviewTaskService;
+import com.example.aipr.vo.PrInfoVO;
+import com.example.aipr.vo.ReviewMarkdownVO;
 import com.example.aipr.vo.ReviewReportVO;
 import com.example.aipr.vo.RiskItemVO;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
 @Service
+@RequiredArgsConstructor
 public class ReviewReportService {
 
+    private final ReviewTaskService reviewTaskService;
+    private final ReviewFileMapper reviewFileMapper;
+    private final ReviewCommentMapper reviewCommentMapper;
+
     public ReviewReportVO getReport(Long taskId) {
+        ReviewTask task = reviewTaskService.requireTask(taskId);
+        List<ReviewFile> files = reviewFileMapper.findByTaskId(taskId);
+        List<ReviewComment> comments = reviewCommentMapper.findByTaskId(taskId);
+
         return ReviewReportVO.builder()
                 .taskId(taskId)
-                .summary("本次 PR 主要修改了登录认证逻辑，涉及 token 生成和用户登录接口。")
-                .riskScore(78)
-                .riskLevel(Severity.HIGH.name())
-                .mainChanges(List.of(
-                        "新增 JwtUtil 工具类",
-                        "修改 LoginService 登录逻辑",
-                        "调整 UserController 返回结构"
-                ))
-                .riskItems(List.of(
-                        RiskItemVO.builder()
-                                .filePath("src/main/java/com/demo/auth/JwtUtil.java")
-                                .line(null)
-                                .riskLevel(Severity.HIGH.name())
-                                .riskType(RiskType.SECURITY_RISK.name())
-                                .title("JWT 密钥存在硬编码风险")
-                                .description("当前代码将 JWT 密钥写在源码中，容易造成密钥泄露。")
-                                .suggestion("建议将密钥改为从环境变量或配置中心读取，并避免在日志中输出。")
-                                .confidence(0.92)
-                                .needHumanCheck(true)
-                                .build()
-                ))
-                .testSuggestions(List.of(
-                        "建议补充 token 过期场景测试",
-                        "建议补充登录失败场景测试"
-                ))
-                .finalReview("建议修改高风险问题后再合并。")
+                .prInfo(PrInfoVO.builder()
+                        .title(task.getPrTitle())
+                        .author(task.getPrAuthor())
+                        .url(task.getPrUrl())
+                        .sourceBranch(task.getSourceBranch())
+                        .targetBranch(task.getTargetBranch())
+                        .changedFiles(files.size())
+                        .additions(sumAdditions(files))
+                        .deletions(sumDeletions(files))
+                        .build())
+                .summary(resolveSummary(task))
+                .riskScore(task.getRiskScore() == null ? 0 : task.getRiskScore())
+                .riskLevel(task.getRiskLevel() == null ? "LOW" : task.getRiskLevel())
+                .totalFileCount(files.size())
+                .analyzedFileCount(countAnalyzedFiles(files))
+                .skippedFileCount(countSkippedFiles(files))
+                .failedFileCount(countFailedFiles(files))
+                .mainChanges(buildMainChanges(files))
+                .riskItems(comments.stream().map(this::toRiskItem).toList())
+                .testSuggestions(buildTestSuggestions(comments))
+                .finalReview(resolveFinalReview(task))
                 .build();
+    }
+
+    public ReviewMarkdownVO getReviewMarkdown(Long taskId) {
+        ReviewReportVO report = getReport(taskId);
+        return ReviewMarkdownVO.builder()
+                .taskId(taskId)
+                .markdown(buildMarkdown(report))
+                .build();
+    }
+
+    private String buildMarkdown(ReviewReportVO report) {
+        StringBuilder markdown = new StringBuilder();
+        PrInfoVO prInfo = report.getPrInfo();
+
+        appendLine(markdown, "## AI Review 总结");
+        appendBlank(markdown);
+        appendLine(markdown, "风险等级：" + valueOrDash(report.getRiskLevel()));
+        appendLine(markdown, "风险分数：" + (report.getRiskScore() == null ? "-" : report.getRiskScore()));
+        appendLine(markdown, "文件统计：总数 " + defaultInt(report.getTotalFileCount())
+                + "，已分析 " + defaultInt(report.getAnalyzedFileCount())
+                + "，跳过 " + defaultInt(report.getSkippedFileCount())
+                + "，失败 " + defaultInt(report.getFailedFileCount()));
+        appendBlank(markdown);
+        appendLine(markdown, "PR：" + valueOrDefault(prInfo == null ? null : prInfo.getTitle(), "未返回标题"));
+        appendLine(markdown, "作者：" + valueOrDash(prInfo == null ? null : prInfo.getAuthor()));
+        appendBlank(markdown);
+
+        if (hasText(report.getSummary())) {
+            appendSection(markdown, "总结");
+            if (defaultInt(report.getFailedFileCount()) > 0) {
+                appendLine(markdown, "> 注意：本次任务有 " + report.getFailedFileCount()
+                        + " 个文件分析失败，报告可能不完整，需要人工补充检查。");
+                appendBlank(markdown);
+            }
+            appendLine(markdown, report.getSummary());
+            appendBlank(markdown);
+        }
+
+        if (report.getMainChanges() != null && !report.getMainChanges().isEmpty()) {
+            appendSection(markdown, "主要变更");
+            report.getMainChanges().forEach(item -> appendLine(markdown, "- " + item));
+            appendBlank(markdown);
+        }
+
+        appendSection(markdown, "Review 建议");
+        if (report.getRiskItems() == null || report.getRiskItems().isEmpty()) {
+            appendLine(markdown, "暂无明确风险建议。");
+            appendBlank(markdown);
+        } else {
+            for (int i = 0; i < report.getRiskItems().size(); i++) {
+                RiskItemVO item = report.getRiskItems().get(i);
+                appendLine(markdown, "#### " + (i + 1) + ". [" + valueOrDefault(item.getRiskLevel(), "INFO") + "] "
+                        + valueOrDefault(item.getTitle(), "未命名建议"));
+                if (hasText(item.getFilePath())) {
+                    appendLine(markdown, "文件：`" + item.getFilePath() + "`");
+                }
+                if (item.getLine() != null) {
+                    appendLine(markdown, "行号：" + item.getLine());
+                }
+                if (hasText(item.getDescription())) {
+                    appendBlank(markdown);
+                    appendLine(markdown, item.getDescription());
+                }
+                if (hasText(item.getReason())) {
+                    appendBlank(markdown);
+                    appendLine(markdown, "依据：" + item.getReason());
+                }
+                if (hasText(item.getEvidence())) {
+                    appendBlank(markdown);
+                    appendLine(markdown, "证据：" + item.getEvidence());
+                }
+                if (hasText(item.getActionLevel())) {
+                    appendBlank(markdown);
+                    appendLine(markdown, "处理级别：" + item.getActionLevel());
+                }
+                if (hasText(item.getSuggestion())) {
+                    appendBlank(markdown);
+                    appendLine(markdown, "建议：" + item.getSuggestion());
+                }
+                appendBlank(markdown);
+            }
+        }
+
+        if (report.getTestSuggestions() != null && !report.getTestSuggestions().isEmpty()) {
+            appendSection(markdown, "测试建议");
+            report.getTestSuggestions().forEach(item -> appendLine(markdown, "- " + item));
+            appendBlank(markdown);
+        }
+
+        if (hasText(report.getFinalReview())) {
+            appendSection(markdown, "最终结论");
+            appendLine(markdown, report.getFinalReview());
+        }
+
+        return markdown.toString().trim();
+    }
+
+    private String resolveSummary(ReviewTask task) {
+        if (task.getSummary() != null && !task.getSummary().isBlank()) {
+            return task.getSummary();
+        }
+        if (ReviewTaskStatus.FAILED.name().equals(task.getStatus())) {
+            return "AI Review 任务执行失败：" + task.getErrorMessage();
+        }
+        if (!isReportReadyStatus(task.getStatus())) {
+            return "AI Review 任务正在执行中，请稍后刷新报告。";
+        }
+        return "本次 PR 暂无明确总结。";
+    }
+
+    private List<String> buildMainChanges(List<ReviewFile> files) {
+        List<String> summaries = files.stream()
+                .map(ReviewFile::getAiSummary)
+                .filter(Objects::nonNull)
+                .filter(summary -> !summary.isBlank())
+                .filter(summary -> !summary.startsWith("[分析失败]"))
+                .limit(5)
+                .toList();
+        if (!summaries.isEmpty()) {
+            return summaries;
+        }
+
+        return files.stream()
+                .map(file -> file.getFilePath() + "（" + file.getFileStatus() + "）")
+                .limit(5)
+                .toList();
+    }
+
+    private RiskItemVO toRiskItem(ReviewComment comment) {
+        BigDecimal confidence = comment.getConfidence();
+        return RiskItemVO.builder()
+                .filePath(comment.getFilePath())
+                .line(comment.getLineNumber())
+                .riskLevel(comment.getRiskLevel())
+                .riskType(comment.getRiskType())
+                .title(comment.getTitle())
+                .description(comment.getDescription())
+                .reason(comment.getReason())
+                .evidence(comment.getEvidence())
+                .actionLevel(comment.getActionLevel())
+                .suggestion(comment.getSuggestion())
+                .confidence(confidence == null ? null : confidence.doubleValue())
+                .needHumanCheck(comment.getNeedHumanCheck())
+                .build();
+    }
+
+    private List<String> buildTestSuggestions(List<ReviewComment> comments) {
+        List<String> suggestions = comments.stream()
+                .filter(comment -> "TEST_RISK".equals(comment.getRiskType()))
+                .map(ReviewComment::getSuggestion)
+                .filter(Objects::nonNull)
+                .filter(suggestion -> !suggestion.isBlank())
+                .toList();
+        if (!suggestions.isEmpty()) {
+            return suggestions;
+        }
+        if (comments.isEmpty()) {
+            return List.of();
+        }
+        return List.of("建议根据本次 PR 变更补充核心路径和异常分支测试。");
+    }
+
+    private String resolveFinalReview(ReviewTask task) {
+        if (task.getFinalReview() != null && !task.getFinalReview().isBlank()) {
+            return task.getFinalReview();
+        }
+        if (ReviewTaskStatus.FAILED.name().equals(task.getStatus())) {
+            return "任务失败，请修复配置或外部服务问题后重新评审。";
+        }
+        return "任务仍在执行或暂无明确结论，请稍后刷新。";
+    }
+
+    private Integer sumAdditions(List<ReviewFile> files) {
+        return files.stream()
+                .map(ReviewFile::getAdditions)
+                .filter(Objects::nonNull)
+                .reduce(0, Integer::sum);
+    }
+
+    private Integer sumDeletions(List<ReviewFile> files) {
+        return files.stream()
+                .map(ReviewFile::getDeletions)
+                .filter(Objects::nonNull)
+                .reduce(0, Integer::sum);
+    }
+
+    private Integer countAnalyzedFiles(List<ReviewFile> files) {
+        return (int) files.stream()
+                .filter(file -> !Boolean.TRUE.equals(file.getSkipped()))
+                .filter(file -> hasText(file.getAiSummary()))
+                .filter(file -> !file.getAiSummary().startsWith("[分析失败]"))
+                .count();
+    }
+
+    private Integer countSkippedFiles(List<ReviewFile> files) {
+        return (int) files.stream()
+                .filter(file -> Boolean.TRUE.equals(file.getSkipped()))
+                .count();
+    }
+
+    private Integer countFailedFiles(List<ReviewFile> files) {
+        return (int) files.stream()
+                .filter(file -> !Boolean.TRUE.equals(file.getSkipped()))
+                .map(ReviewFile::getAiSummary)
+                .filter(this::hasText)
+                .filter(summary -> summary.startsWith("[分析失败]"))
+                .count();
+    }
+
+    private boolean isReportReadyStatus(String status) {
+        return ReviewTaskStatus.SUCCESS.name().equals(status)
+                || ReviewTaskStatus.PARTIAL_SUCCESS.name().equals(status);
+    }
+
+    private void appendSection(StringBuilder markdown, String title) {
+        appendLine(markdown, "### " + title);
+        appendBlank(markdown);
+    }
+
+    private void appendLine(StringBuilder markdown, String text) {
+        markdown.append(text).append('\n');
+    }
+
+    private void appendBlank(StringBuilder markdown) {
+        markdown.append('\n');
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String valueOrDash(String value) {
+        return valueOrDefault(value, "-");
+    }
+
+    private String valueOrDefault(String value, String fallback) {
+        return hasText(value) ? value : fallback;
+    }
+
+    private int defaultInt(Integer value) {
+        return value == null ? 0 : value;
     }
 }

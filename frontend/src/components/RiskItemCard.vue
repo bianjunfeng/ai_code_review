@@ -4,9 +4,14 @@
       <div class="risk-tags">
         <el-tag :type="tagType" effect="dark">{{ level }}</el-tag>
         <el-tag effect="plain">{{ item.riskType || 'UNKNOWN' }}</el-tag>
-        <el-tag v-if="item.confidence" type="info" effect="plain">置信度 {{ item.confidence }}</el-tag>
+        <el-tag v-if="item.confidence != null" type="info" effect="plain">
+          置信度 {{ formatConfidence(item.confidence) }}
+        </el-tag>
+        <el-tag v-if="item.actionLevel" type="warning" effect="plain">
+          处理级别 {{ formatActionLevel(item.actionLevel) }}
+        </el-tag>
       </div>
-      <el-button v-if="item.comment" :icon="CopyDocument" plain @click="copyComment">复制评论</el-button>
+      <el-button :icon="CopyDocument" plain @click="copyComment">复制评论</el-button>
     </div>
 
     <div class="file-path mono">{{ item.filePath || '未返回文件路径' }}</div>
@@ -18,8 +23,18 @@
       </section>
 
       <section v-if="item.reason">
-        <h4>原因分析</h4>
+        <h4>依据</h4>
         <p>{{ item.reason }}</p>
+      </section>
+
+      <section v-if="item.evidence">
+        <h4>证据</h4>
+        <p>{{ item.evidence }}</p>
+      </section>
+
+      <section v-if="item.actionLevel">
+        <h4>处理级别</h4>
+        <p>{{ formatActionLevel(item.actionLevel) }}</p>
       </section>
 
       <section>
@@ -50,7 +65,7 @@ const props = defineProps({
 const level = computed(() => String(props.item.riskLevel || 'LOW').toUpperCase())
 
 const tagType = computed(() => {
-  if (level.value === 'HIGH') {
+  if (level.value === 'CRITICAL' || level.value === 'HIGH') {
     return 'danger'
   }
   if (level.value === 'MEDIUM') {
@@ -66,8 +81,38 @@ const levelClass = computed(() => {
   return `risk-item--${level.value.toLowerCase()}`
 })
 
+function formatConfidence(value) {
+  const num = Number(value)
+  if (Number.isNaN(num)) {
+    return 'N/A'
+  }
+  return Math.round(num * 100) + '%'
+}
+
+function formatActionLevel(value) {
+  const actionLevel = String(value || '').toUpperCase()
+  const labels = {
+    MUST_FIX: 'MUST_FIX',
+    SHOULD_FIX: 'SHOULD_FIX',
+    OPTIONAL: 'OPTIONAL'
+  }
+  return labels[actionLevel] || actionLevel || 'OPTIONAL'
+}
+
 async function copyComment() {
-  const text = props.item.comment || ''
+  let text = props.item.comment
+  if (!text) {
+    const parts = [
+      props.item.title,
+      props.item.description,
+      props.item.reason ? `依据：${props.item.reason}` : '',
+      props.item.evidence ? `证据：${props.item.evidence}` : '',
+      props.item.actionLevel ? `处理级别：${formatActionLevel(props.item.actionLevel)}` : '',
+      props.item.suggestion
+    ].filter(Boolean)
+    text = parts.join('\n\n')
+  }
+
   if (!text) {
     ElMessage.warning('暂无可复制评论')
     return
@@ -102,6 +147,10 @@ async function copyComment() {
 
 .risk-item--high {
   border-left-color: #d93025;
+}
+
+.risk-item--critical {
+  border-left-color: #8f1d18;
 }
 
 .risk-item--medium {

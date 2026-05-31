@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.aipr.mapper.ReviewSkillResultMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.aipr.entity.ReviewSkillResult">
+        <id column="id" property="id"/>
+        <result column="task_id" property="taskId"/>
+        <result column="skill_name" property="skillName"/>
+        <result column="success" property="success"/>
+        <result column="summary" property="summary"/>
+        <result column="raw_output" property="rawOutput"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, task_id, skill_name, success, summary, raw_output, created_at
+    </sql>
+
+    <select id="findByTaskId" resultMap="BaseResultMap">
+        SELECT * FROM review_skill_result
+        WHERE task_id = #{taskId}
+        ORDER BY created_at ASC
+    </select>
+
+    <select id="findByTaskIdAndSkillName" resultMap="BaseResultMap">
+        SELECT * FROM review_skill_result
+        WHERE task_id = #{taskId}
+          AND skill_name = #{skillName}
+        LIMIT 1
+    </select>
+
+</mapper>

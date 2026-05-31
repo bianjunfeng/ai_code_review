@@ -36,7 +36,7 @@ const props = defineProps({
   }
 })
 
-const isHighRisk = computed(() => String(props.riskLevel || '').toUpperCase() === 'HIGH')
+const isHighRisk = computed(() => ['CRITICAL', 'HIGH'].includes(String(props.riskLevel || '').toUpperCase()))
 
 const fallbackText = computed(() => {
   if (isHighRisk.value) {

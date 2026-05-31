@@ -1,0 +1,46 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ai-pr-review-backend
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/ai_code_review?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:ai_review_user}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis-plus:
+  mapper-locations: classpath:/mapper/*.xml
+  type-aliases-package: com.example.aipr.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+github:
+  token: ${GITHUB_TOKEN:}
+  api-base-url: ${GITHUB_API_BASE_URL:https://api.github.com}
+  connect-timeout-seconds: ${GITHUB_CONNECT_TIMEOUT_SECONDS:10}
+  read-timeout-seconds: ${GITHUB_READ_TIMEOUT_SECONDS:30}
+
+ai:
+  base-url: ${AI_BASE_URL:https://api.deepseek.com}
+  api-key: ${AI_API_KEY:}
+  model-name: ${AI_MODEL_NAME:deepseek-chat}
+  temperature: ${AI_TEMPERATURE:0.2}
+  max-tokens: 3000
+
+logging:
+  level:
+    root: INFO
+    com.example.aipr: DEBUG
+    com.example.aipr.mapper: DEBUG
+    org.mybatis: DEBUG
+    com.baomidou.mybatisplus: DEBUG
+    com.zaxxer.hikari: INFO

@@ -8,4 +8,6 @@ public class CreateReviewTaskRequest {
 
     @NotBlank(message = "PR 链接不能为空")
     private String prUrl;
+
+    private Boolean forceRefresh;
 }

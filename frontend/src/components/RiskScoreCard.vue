@@ -60,6 +60,9 @@ const normalizedLevel = computed(() => {
 })
 
 const progressColor = computed(() => {
+  if (normalizedLevel.value === 'CRITICAL') {
+    return '#8f1d18'
+  }
   if (normalizedLevel.value === 'HIGH') {
     return '#d93025'
   }
@@ -73,6 +76,9 @@ const progressColor = computed(() => {
 })
 
 const riskDescription = computed(() => {
+  if (normalizedLevel.value === 'CRITICAL') {
+    return '当前 PR 存在严重风险，建议修复关键问题并完成人工复核后再考虑合并。'
+  }
   if (normalizedLevel.value === 'HIGH') {
     return '当前 PR 存在高风险问题，建议优先修复后再进入合并流程。'
   }

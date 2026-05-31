@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-pr-review:${VERSION:-latest}
+    container_name: ai-pr-review
+    ports:
+      - "80:80"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
+      - DB_URL=jdbc:mysql://mysql:3306/ai_code_review
+      - DB_USERNAME=${DB_USERNAME:-ai_review_user}
+      - DB_PASSWORD=${DB_PASSWORD:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GITHUB_API_BASE_URL=${GITHUB_API_BASE_URL:-https://api.github.com}
+      - GITHUB_CONNECT_TIMEOUT_SECONDS=10
+      - GITHUB_READ_TIMEOUT_SECONDS=30
+      - AI_BASE_URL=${AI_BASE_URL:-https://api.deepseek.com}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AI_MODEL_NAME=${AI_MODEL_NAME:-deepseek-chat}
+      - AI_TEMPERATURE=0.2
+      - AI_MAX_TOKENS=3000
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    container_name: ai-pr-review-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpass}
+      - MYSQL_DATABASE=ai_code_review
+      - MYSQL_USER=${DB_USERNAME:-ai_review_user}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mysql_data:

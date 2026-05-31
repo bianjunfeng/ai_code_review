@@ -1,12 +1,4 @@
-import axios from 'axios'
-
-const http = axios.create({
-  baseURL: '',
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
+import { http, normalizePage, unwrapResult } from './request'
 
 export const mockReport = {
   taskId: 1,
@@ -32,31 +24,41 @@ export const mockReport = {
     {
       filePath: 'src/main/java/com/demo/auth/JwtUtil.java',
       riskLevel: 'HIGH',
-      riskType: 'SECURITY',
-      description: 'JWT 密钥存在硬编码风险。',
-      reason: '密钥直接写在源码中，公开仓库或日志泄露时会导致 token 可被伪造。',
+      riskType: 'SECURITY_RISK',
+      title: 'JWT 密钥存在硬编码风险',
+      description: '密钥直接写在源码中，公开仓库或日志泄露时会导致 token 可被伪造。',
+      reason: '认证 token 签名密钥属于敏感配置，硬编码会扩大泄露影响面。',
+      evidence: 'private static final String SECRET = "123456";',
+      actionLevel: 'MUST_FIX',
       suggestion: '建议改为从环境变量或安全配置中心读取，并区分本地、测试和生产环境。',
-      confidence: 'HIGH',
-      comment: '建议不要在源码中硬编码 JWT 密钥，可以改为从环境变量或安全配置中心读取。'
+      confidence: 0.92,
+      needHumanCheck: true
     },
     {
       filePath: 'src/main/java/com/demo/service/LoginService.java',
       riskLevel: 'MEDIUM',
       riskType: 'BUG_RISK',
-      description: 'refresh token 过期后仍可能继续执行用户信息查询。',
-      reason: '当前异常分支只记录错误，没有及时中断后续流程。',
+      title: 'refresh token 过期后仍可能继续执行用户信息查询',
+      description: '当前异常分支只记录错误，没有及时中断后续流程。',
+      reason: '认证失败后继续读取用户上下文可能造成错误响应或越权路径。',
+      evidence: 'catch 后继续执行 userRepository.findById(...)',
+      actionLevel: 'SHOULD_FIX',
       suggestion: '建议在 token 校验失败时直接返回明确业务异常，避免继续访问用户上下文。',
-      confidence: 'MEDIUM',
-      comment: 'refresh token 校验失败后应立即中断流程，避免继续查询用户上下文导致错误状态。'
+      confidence: 0.75,
+      needHumanCheck: true
     },
     {
       filePath: 'src/test/java/com/demo/service/LoginServiceTest.java',
       riskLevel: 'LOW',
       riskType: 'TEST_RISK',
-      description: '测试只覆盖登录成功路径。',
+      title: '测试只覆盖登录成功路径',
+      description: '测试覆盖不完整。',
+      reason: '认证逻辑变更缺少异常分支覆盖，回归时不容易发现 token 校验问题。',
+      evidence: 'LoginServiceTest 仅包含 loginSuccess 用例',
+      actionLevel: 'OPTIONAL',
       suggestion: '建议补充 token 过期、签名错误、用户不存在和密码错误等分支测试。',
-      confidence: 'MEDIUM',
-      comment: '建议补充认证失败和 token 过期场景的单元测试，降低后续回归风险。'
+      confidence: 0.68,
+      needHumanCheck: false
     }
   ],
   testSuggestions: [
@@ -68,23 +70,53 @@ export const mockReport = {
   finalReview: '建议修改高风险问题后再合并。'
 }
 
-export async function analyzeReview(prUrl) {
-  const response = await http.post('/api/reviews/analyze', { prUrl })
-  return unwrapReviewReport(response.data)
+export async function createReviewTask(prUrl, forceRefresh = false) {
+  const response = await http.post('/api/review-tasks', { prUrl, forceRefresh })
+  return unwrapResult(response.data)
 }
 
-export function unwrapReviewReport(payload) {
-  if (!payload) {
-    return null
-  }
+export async function listReviewTasks(params = {}) {
+  const response = await http.get('/api/review-tasks', { params })
+  const data = unwrapResult(response.data)
+  return normalizePage(data, params.page, params.pageSize)
+}
 
-  if (payload.data && (Object.hasOwn(payload, 'success') || Object.hasOwn(payload, 'code'))) {
-    return payload.data
-  }
+export async function getReviewReport(taskId) {
+  const response = await http.get(`/api/review-tasks/${taskId}/report`)
+  return unwrapResult(response.data)
+}
 
-  if (payload.data && payload.message && !payload.prInfo) {
-    return payload.data
-  }
+export async function getReviewTask(taskId) {
+  const response = await http.get(`/api/review-tasks/${taskId}`)
+  return unwrapResult(response.data)
+}
 
-  return payload
+export async function getReviewFiles(taskId) {
+  const response = await http.get(`/api/review-tasks/${taskId}/files`)
+  return unwrapResult(response.data) || []
+}
+
+export async function getReviewComments(taskId, params = {}) {
+  const response = await http.get(`/api/review-tasks/${taskId}/comments`, { params })
+  return unwrapResult(response.data) || []
+}
+
+export async function getReviewMarkdown(taskId) {
+  const response = await http.get(`/api/review-tasks/${taskId}/review-markdown`)
+  return unwrapResult(response.data)
+}
+
+export async function getTaskModelUsage(taskId) {
+  const response = await http.get(`/api/model-usage/tasks/${taskId}`)
+  return unwrapResult(response.data)
+}
+
+export async function getReviewTaskStatistics() {
+  const response = await http.get('/api/review-tasks/statistics')
+  return unwrapResult(response.data)
+}
+
+export async function getRecentFailures(params = {}) {
+  const response = await http.get('/api/review-tasks/recent-failures', { params })
+  return unwrapResult(response.data)
 }

@@ -440,6 +440,7 @@ FETCHING_PR
 PARSING_DIFF
 REVIEWING
 SUMMARIZING
+SCORING
 SUCCESS
 FAILED
 CANCELLED
@@ -453,6 +454,7 @@ PENDING
 → PARSING_DIFF
 → REVIEWING
 → SUMMARIZING
+→ SCORING
 → SUCCESS
 ```
 
@@ -502,6 +504,7 @@ docs/05-Prompt设计.md
 AI Review 风险等级只能使用以下值：
 
 ```text
+CRITICAL
 HIGH
 MEDIUM
 LOW
@@ -510,12 +513,13 @@ INFO
 
 含义：
 
-| Severity | 含义                     |
-| -------- | ------------------------ |
-| HIGH     | 高风险，建议必须修改     |
-| MEDIUM   | 中风险，建议优先检查     |
-| LOW      | 低风险，可选优化         |
-| INFO     | 提示信息，不一定需要修改 |
+| Severity  | 含义                                   |
+| --------- | -------------------------------------- |
+| CRITICAL  | 严重风险，可能导致安全事件或数据损坏   |
+| HIGH      | 高风险，建议必须修改                   |
+| MEDIUM    | 中风险，建议优先检查                   |
+| LOW       | 低风险，可选优化                       |
+| INFO      | 提示信息，不一定需要修改               |
 
 ------
 

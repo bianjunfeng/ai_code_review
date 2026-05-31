@@ -7,7 +7,9 @@ public enum ReviewTaskStatus {
     PARSING_DIFF,
     REVIEWING,
     SUMMARIZING,
+    SCORING,
     SUCCESS,
+    PARTIAL_SUCCESS,
     FAILED,
     CANCELLED
 }

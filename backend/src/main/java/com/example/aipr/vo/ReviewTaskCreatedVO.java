@@ -9,4 +9,6 @@ public class ReviewTaskCreatedVO {
 
     private Long taskId;
     private String status;
+    private Boolean cached;
+    private Long cachedFromTaskId;
 }
