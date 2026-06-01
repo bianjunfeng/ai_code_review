@@ -2,7 +2,9 @@
 
 Demo视频链接：https://www.bilibili.com/video/BV1XxVD6eEYP/?spm_id_from=333.1387.homepage.video_card.click&vd_source=946fe0294b0568acb902e67664fcaaf0
 
-在线Demo地址：http://49.232.59.230/dashboard
+上述视频演示时有bug，故新做演示链接：https://www.bilibili.com/video/BV1GoVd6UEGx/?spm_id_from=333.1387.homepage.video_card.click&vd_source=946fe0294b0568acb902e67664fcaaf0
+
+在线Demo地址：http://www.bianjunfeng.online/
 
 ## 1. 项目简介
 
@@ -135,7 +137,7 @@ Review 建议列表
 | Spring Web         | REST API                     |
 | MyBatis-Plus       | 数据库访问                   |
 | MySQL 8            | 业务数据存储                 |
-| Redis              | 缓存和任务状态，可选         |
+| Redis              | 缓存和任务状态               |
 | Spring Async       | 异步执行 Review 任务         |
 | OkHttp / WebClient | 调用 GitHub API 和大模型 API |
 | Jackson            | JSON 序列化与反序列化        |
