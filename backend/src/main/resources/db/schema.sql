@@ -134,4 +134,3 @@ create index idx_success
 
 create index idx_task_id
     on model_usage_log (task_id);
-schema.sql
