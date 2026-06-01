@@ -34,6 +34,19 @@ docker compose down            # 停止并删除容器
 docker compose down -v         # 停止并删除容器+数据（⚠️ 数据库数据会丢失）
 ```
 
+## 已有部署升级
+
+如果升级后出现 `Unknown column 'evidence' in 'field list'`，说明当前 MySQL 数据卷中的
+`review_comment` 表结构落后于代码版本。执行下面的升级脚本补齐字段，然后重启应用：
+
+```bash
+docker compose exec -T mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' < ../backend/src/main/resources/db/migration/20260601_add_review_comment_evidence.sql
+docker compose restart app
+```
+
+新部署会自动执行 `backend/src/main/resources/db/schema.sql` 初始化数据库；已有 `mysql_data`
+数据卷不会重新执行初始化脚本，需要按上面的升级步骤处理。
+
 ## 服务架构
 
 ```
