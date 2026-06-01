@@ -1,5 +1,9 @@
 # AI PR Review 助手
 
+Demo视频链接：https://www.bilibili.com/video/BV1XxVD6eEYP/?spm_id_from=333.1387.homepage.video_card.click&vd_source=946fe0294b0568acb902e67664fcaaf0
+
+在线Demo地址：http://49.232.59.230/dashboard
+
 ## 1. 项目简介
 
 AI PR Review 助手是一个面向开发者的智能代码评审平台。用户输入 GitHub Pull Request 链接后，系统会自动获取 PR 基本信息和代码变更 Diff，并调用大模型进行智能分析，生成 PR 变更总结、风险代码识别和 Review 修改建议，帮助开发者提升 Pull Request Review 的效率与质量。
