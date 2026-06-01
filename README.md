@@ -4,7 +4,9 @@ Demo视频链接：https://www.bilibili.com/video/BV1XxVD6eEYP/?spm_id_from=333.
 
 上述视频演示时有bug，故新做演示链接：https://www.bilibili.com/video/BV1GoVd6UEGx/?spm_id_from=333.1387.homepage.video_card.click&vd_source=946fe0294b0568acb902e67664fcaaf0
 
-在线Demo地址：http://www.bianjunfeng.online/
+在线Demo地址：http://49.232.59.230/
+
+http://www.bianjunfeng.online/
 
 ## 1. 项目简介
 
